@@ -1,0 +1,15 @@
+# PDF Merger Web App - Závislosti
+# Autor: David Rynes
+
+# Web framework
+Flask>=2.3.0
+Werkzeug>=2.3.0
+
+# PDF zpracování
+PyPDF2>=3.0.0
+reportlab>=4.0.0
+Pillow>=9.0.0
+PyMuPDF>=1.23.0
+
+# Další závislosti
+pathlib2>=2.3.0

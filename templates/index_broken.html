@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Merger</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --radius: 12px;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        body {
+            background: var(--gray-50);
+            color: var(--gray-900);
+            font-size: 14px;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+        
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .header-title {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.025em;
+        }
+        
+        .header-subtitle {
+            font-size: 1rem;
+            color: var(--gray-500);
+            font-weight: 400;
+        }
+        
+        /* Card */
+        .card {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--gray-200);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+        
+        .card-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .card-header-icon {
+            width: 2rem;
+            height: 2rem;
+            background: var(--gray-100);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gray-600);
+        }
+        
+        .card-header-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+        
+        .card-body {
+            padding: 1.5rem;
+        }
+        
+        /* Drag & Drop */
+        .drag-drop {
+            border: 2px dashed var(--gray-300);
+            border-radius: var(--radius);
+            padding: 3rem 2rem;
+            text-align: center;
+            background: var(--gray-50);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .drag-drop:hover {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+        
+        .drag-drop.dragover {
+            border-color: var(--primary);
+            background: #dbeafe;
+            transform: scale(1.01);
+        }
+        
+        .drag-drop-icon {
+            font-size: 3rem;
+            color: var(--gray-400);
+            margin-bottom: 1rem;
+        }
+        
+        .drag-drop-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 0.5rem;
+        }
+        
+        .drag-drop-subtitle {
+            font-size: 0.875rem;
+            color: var(--gray-500);
+        }
+        
+        /* Button */
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: var(--gray-700);
+            border: 1px solid var(--gray-300);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--gray-50);
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #059669;
+        }
+        
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        .btn-lg {
+            padding: 0.875rem 1.75rem;
+            font-size: 1rem;
+        }
+        
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.8125rem;
+        }
+        
+        /* File List */
+        .file-grid {
+            display: grid;
+            gap: 0.75rem;
+        }
+        
+        .file-item {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: all 0.2s ease;
+        }
+        
+        .file-item:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--gray-300);
+        }
+        
+        .file-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            background: #fee2e2;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-center;
+            color: var(--danger);
+            font-size: 1.25rem;
+        }
+        
+        .file-info {
+            flex: 1;
+        }
+        
+        .file-name {
+            font-weight: 500;
+            color: var(--gray-900);
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .file-size {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+        }
+        
+        /* Pairs */
+        .pair-item {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .pair-files {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .pair-file {
+            flex: 1;
+            font-size: 0.875rem;
+            color: var(--gray-700);
+        }
+        
+        .pair-arrow {
+            color: var(--success);
+            font-size: 1.25rem;
+        }
+        
+        /* Alert */
+        .alert {
+            padding: 1rem 1.25rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+        
+        .alert-info {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: var(--gray-700);
+        }
+        
+        .alert-success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: var(--gray-700);
+        }
+        
+        .alert-icon {
+            font-size: 1.25rem;
+            color: var(--primary);
+        }
+        
+        .alert-success .alert-icon {
+            color: var(--success);
+        }
+        
+        .alert-content h4 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 0.5rem;
+        }
+        
+        .alert-content ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .alert-content li {
+            font-size: 0.8125rem;
+            color: var(--gray-600);
+            margin-bottom: 0.25rem;
+            padding-left: 1.25rem;
+            position: relative;
+        }
+        
+        .alert-content li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+        }
+        
+        /* Progress */
+        .progress-bar {
+            width: 100%;
+            height: 0.5rem;
+            background: var(--gray-200);
+            border-radius: 999px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s ease;
+        }
+        
+        .progress-text {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+        }
+        
+        /* Results */
+        .result-item {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+        }
+        
+        .result-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .result-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-size: 1.25rem;
+        }
+        
+        .result-details h4 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 0.125rem;
+        }
+        
+        .result-details p {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            margin: 0;
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--gray-400);
+        }
+        
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .empty-state-text {
+            font-size: 0.875rem;
+        }
+        
+        /* Utility */
+        .mb-1 { margin-bottom: 0.5rem; }
+        .mb-2 { margin-bottom: 1rem; }
+        .mb-3 { margin-bottom: 1.5rem; }
+        .mt-1 { margin-top: 0.5rem; }
+        .mt-2 { margin-top: 1rem; }
+        .mt-3 { margin-top: 1.5rem; }
+        .hidden { display: none; }
+        .text-center { text-align: center; }
+        .flex { display: flex; }
+        .gap-2 { gap: 0.5rem; }
+        .justify-between { justify-content: space-between; }
+        .items-center { align-items: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1 class="header-title">📄 PDF Merger</h1>
+        </div>
+
+        <!-- Upload Card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-icon">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z"/>
+                    </svg>
+                </div>
+                <h2 class="card-header-title">1. Nahrajte PDF soubory</h2>
+            </div>
+            <div class="card-body">
+                <div class="drag-drop" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                    <div class="drag-drop-icon">📁</div>
+                    <div class="drag-drop-title">Přetáhněte soubory sem</div>
+                    <div class="drag-drop-subtitle">nebo klikněte pro výběr souborů</div>
+                    <input type="file" id="fileInput" multiple accept=".pdf" style="display: none;">
+                </div>
+                
+                <div id="fileList" class="file-grid mt-3"></div>
+            </div>
+        </div>
+
+        <!-- Pairing Card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-icon">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z"/>
+                    </svg>
+                </div>
+                <h2 class="card-header-title">2. Párování souborů</h2>
+            </div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <button class="btn btn-primary" onclick="autoPair()">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z"/>
+                        </svg>
+                        Automatické párování
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearPairs()">
+                        Vymazat páry
+                    </button>
+                </div>
+                
+                <div id="pairsList"></div>
+            </div>
+        </div>
+
+        <!-- Settings Card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-icon">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"/>
+                    </svg>
+                </div>
+                <h2 class="card-header-title">3. Nastavení</h2>
+            </div>
+            <div class="card-body">
+                
+                <div class="text-center mt-3">
+                    <button class="btn btn-success btn-lg" onclick="startMerge()" id="mergeBtn">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/>
+                        </svg>
+                        Spustit slučování
+                    </button>
+                    <button class="btn btn-danger btn-lg" onclick="clearAll()" style="margin-left: 0.5rem;">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"/>
+                        </svg>
+                        Vymazat vše
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress (Hidden by default) -->
+        <div class="card hidden" id="progressCard">
+            <div class="card-header">
+                <div class="card-header-icon">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"/>
+                    </svg>
+                </div>
+                <h2 class="card-header-title">Zpracování...</h2>
+            </div>
+            <div class="card-body">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+                </div>
+                <div class="progress-text" id="progressText">Připravuji...</div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="card hidden" id="resultsCard">
+            <div class="card-header">
+                <div class="card-header-icon">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                    </svg>
+                </div>
+                <h2 class="card-header-title">4. Výsledky</h2>
+            </div>
+            <div class="card-body">
+                <div id="resultsList"></div>
+            </div>
+        </div>
+
+        <!-- Status Messages -->
+        <div id="statusMessages"></div>
+    </div>
+
+    <script>
+        let currentFiles = [];
+        let currentPairs = [];
+        let taskId = null;
+
+        // Drag & Drop
+        const dropZone = document.getElementById('dropZone');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.remove('dragover');
+            }, false);
+        });
+
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const files = e.dataTransfer.files;
+            handleFiles(files);
+        }
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            handleFiles(this.files);
+        });
+
+        async function handleFiles(files) {
+            const formData = new FormData();
+            for (let file of files) {
+                formData.append('files', file);
+            }
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    await loadFiles();
+                    showStatus('Soubory nahrány úspěšně', 'success');
+                }
+            } catch (error) {
+                showStatus('Chyba při nahrávání souborů', 'danger');
+            }
+        }
+
+        async function loadFiles() {
+            try {
+                const response = await fetch('/api/files');
+                currentFiles = await response.json();
+                displayFiles();
+            } catch (error) {
+                showStatus('Chyba při načítání souborů', 'danger');
+            }
+        }
+
+        function displayFiles() {
+            const fileList = document.getElementById('fileList');
+            if (currentFiles.length === 0) {
+                fileList.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">Zatím nebyly nahrány žádné soubory</div></div>';
+                return;
+            }
+
+            fileList.innerHTML = currentFiles.map(file => `
+                <div class="file-item">
+                    <div class="file-icon">📄</div>
+                    <div class="file-info">
+                        <div class="file-name">${file}</div>
+                        <div class="file-size">PDF soubor</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function autoPair() {
+            try {
+                const response = await fetch('/api/auto-pair', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ files: currentFiles })
+                });
+
+                if (response.ok) {
+                    currentPairs = await response.json();
+                    displayPairs();
+                    showStatus('Soubory automaticky spárovány', 'success');
+                }
+            } catch (error) {
+                showStatus('Chyba při párování souborů', 'danger');
+            }
+        }
+
+        function displayPairs() {
+            const pairsList = document.getElementById('pairsList');
+            if (currentPairs.length === 0) {
+                pairsList.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔗</div><div class="empty-state-text">Zatím nebyly vytvořeny žádné páry</div></div>';
+                return;
+            }
+
+            pairsList.innerHTML = currentPairs.map((pair, index) => `
+                <div class="pair-item">
+                    <div class="pair-files">
+                        <div class="pair-file">📄 ${pair.left_file}</div>
+                        <div class="pair-arrow">→</div>
+                        <div class="pair-file">📄 ${pair.right_file}</div>
+                    </div>
+                    <button class="btn btn-sm btn-danger" onclick="removePair(${index})">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
+                        </svg>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function removePair(index) {
+            currentPairs.splice(index, 1);
+            displayPairs();
+        }
+
+        function clearPairs() {
+            currentPairs = [];
+            displayPairs();
+            showStatus('Páry vymazány', 'info');
+        }
+
+        async function startMerge() {
+            if (currentPairs.length === 0) {
+                showStatus('Nejdříve vytvořte páry souborů', 'warning');
+                return;
+            }
+
+            try {
+                document.getElementById('progressCard').classList.remove('hidden');
+                document.getElementById('resultsCard').classList.add('hidden');
+                document.getElementById('mergeBtn').disabled = true;
+
+                const response = await fetch('/api/merge', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        pairs: currentPairs,
+                        rotation: 0
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    taskId = data.task_id;
+                    checkProgress();
+                }
+            } catch (error) {
+                showStatus('Chyba při slučování souborů', 'danger');
+                document.getElementById('mergeBtn').disabled = false;
+            }
+        }
+
+        async function checkProgress() {
+            try {
+                const response = await fetch(`/api/task/${taskId}`);
+                const data = await response.json();
+
+                const progress = (data.current / data.total) * 100;
+                document.getElementById('progressBar').style.width = progress + '%';
+                document.getElementById('progressText').textContent = `Zpracovávám ${data.current} z ${data.total} souborů...`;
+
+                if (data.status === 'completed') {
+                    document.getElementById('progressCard').classList.add('hidden');
+                    document.getElementById('resultsCard').classList.remove('hidden');
+                    displayResults(data.results);
+                    document.getElementById('mergeBtn').disabled = false;
+                    showStatus('Slučování dokončeno!', 'success');
+                } else if (data.status === 'failed') {
+                    document.getElementById('progressCard').classList.add('hidden');
+                    document.getElementById('mergeBtn').disabled = false;
+                    showStatus('Slučování selhalo', 'danger');
+                } else {
+                    setTimeout(checkProgress, 1000);
+                }
+            } catch (error) {
+                showStatus('Chyba při kontrole průběhu', 'danger');
+                document.getElementById('mergeBtn').disabled = false;
+            }
+        }
+
+        function displayResults(results) {
+            const resultsList = document.getElementById('resultsList');
+            const successFiles = results.success || [];
+
+            if (successFiles.length === 0) {
+                resultsList.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❌</div><div class="empty-state-text">Žádné soubory nebyly sloučeny</div></div>';
+                return;
+            }
+
+            resultsList.innerHTML = successFiles.map(file => `
+                <div class="result-item">
+                    <div class="result-info">
+                        <div class="result-icon">📑</div>
+                        <div class="result-details">
+                            <h4>${file.filename}</h4>
+                            <p>${file.size_mb} MB</p>
+                        </div>
+                    </div>
+                    <a href="/api/download/${file.filename}" class="btn btn-primary btn-sm">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"/>
+                        </svg>
+                        Stáhnout
+                    </a>
+                </div>
+            `).join('');
+        }
+
+        async function clearAll() {
+            if (!confirm('Opravdu chcete vymazat všechny soubory?')) {
+                return;
+            }
+
+            try {
+                await fetch('/api/clear', { method: 'POST' });
+                currentFiles = [];
+                currentPairs = [];
+                displayFiles();
+                displayPairs();
+                document.getElementById('resultsCard').classList.add('hidden');
+                showStatus('Všechny soubory vymazány', 'info');
+            } catch (error) {
+                showStatus('Chyba při mazání souborů', 'danger');
+            }
+        }
+
+        function showStatus(message, type) {
+            const colors = {
+                success: 'var(--success)',
+                danger: 'var(--danger)',
+                warning: 'var(--warning)',
+                info: 'var(--primary)'
+            };
+
+            const statusDiv = document.createElement('div');
+            statusDiv.style.cssText = `
+                position: fixed;
+                bottom: 2rem;
+                right: 2rem;
+                background: white;
+                color: var(--gray-900);
+                padding: 1rem 1.5rem;
+                border-radius: 8px;
+                box-shadow: var(--shadow-lg);
+                border-left: 4px solid ${colors[type]};
+                z-index: 1000;
+                animation: slideIn 0.3s ease;
+            `;
+            statusDiv.textContent = message;
+            document.body.appendChild(statusDiv);
+
+            setTimeout(() => {
+                statusDiv.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => statusDiv.remove(), 300);
+            }, 3000);
+        }
+
+        // Load files on page load
+        loadFiles();
+    </script>
+
+    <style>
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+    </style>
+</body>
+</html>
+

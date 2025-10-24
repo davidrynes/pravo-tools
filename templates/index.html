@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Merger - Webová aplikace</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success: #10b981;
+            --danger: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --border-radius: 12px;
+            --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        }
+        
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        body {
+            background: var(--gray-50);
+            color: var(--gray-900);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        /* Bootstrap overrides pro Inter font */
+        .btn {
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+        }
+        
+        .card {
+            border: 1px solid var(--gray-200);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .card-header {
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+            font-weight: 600;
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+        
+        .display-4 {
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+        
+        .container-custom {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.025em;
+        }
+        
+        .header p {
+            font-size: 1rem;
+            color: var(--gray-500);
+            font-weight: 400;
+        }
+        
+        /* Cards */
+        .card-custom {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--gray-200);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+        
+        .card-header-custom {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            background: white;
+        }
+        
+        .card-header-custom h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .card-body-custom {
+            padding: 1.5rem;
+        }
+        
+        /* Drag & Drop */
+        .drag-drop-area {
+            border: 2px dashed var(--gray-300);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            background-color: white;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .drag-drop-area:hover {
+            background-color: #eff6ff;
+            border-color: var(--primary);
+        }
+        .drag-drop-area.dragover {
+            background-color: #dbeafe;
+            border-color: var(--primary);
+            transform: scale(1.01);
+        }
+        .file-item {
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: white;
+            transition: all 0.2s ease;
+        }
+        .file-item:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--gray-300);
+        }
+        .pair-item {
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: #f0fdf4;
+        }
+        .progress-container {
+            display: none;
+        }
+        .result-item {
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: #f0f9ff;
+        }
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+        }
+        .drag-drop-pairs {
+            min-height: 300px;
+            border: 2px dashed var(--gray-300);
+            border-radius: 12px;
+            padding: 20px;
+            background-color: white;
+            transition: all 0.2s ease;
+        }
+        .drag-drop-pairs.dragover {
+            border-color: var(--primary);
+            background-color: #eff6ff;
+            transform: scale(1.01);
+        }
+        .file-item-draggable {
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            background-color: white;
+            cursor: move;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        .file-item-draggable:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+            border-color: var(--gray-300);
+        }
+        .file-item-draggable.dragging {
+            opacity: 0.5;
+            transform: rotate(3deg);
+        }
+        .pair-item-draggable {
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            background-color: #f0fdf4;
+            cursor: move;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        .pair-item-draggable:hover {
+            box-shadow: var(--shadow-md);
+        }
+        .pair-item-draggable.dragging {
+            opacity: 0.5;
+            transform: rotate(-3deg);
+        }
+        .drop-zone {
+            min-height: 100px;
+            border: 2px dashed var(--success);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            background-color: #f0fdf4;
+            margin-bottom: 10px;
+            transition: all 0.2s ease;
+        }
+        .drop-zone.dragover {
+            background-color: #dcfce7;
+            border-color: #059669;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Hlavní obsah -->
+            <div class="col-lg-8">
+                <div class="container mt-4">
+                    <!-- Hlavička -->
+                    <div class="row mb-4">
+                        <div class="col">
+                            <h1 class="display-4 text-primary">
+                                <i class="fas fa-file-pdf"></i> Slučovač
+                            </h1>
+                        </div>
+                    </div>
+
+                    <!-- Sekce 1: Nahrávání souborů -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-upload"></i> 1. Nahrání PDF souborů
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="drag-drop-area" id="dragDropArea">
+                                <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                                <h5>Přetáhněte PDF soubory sem nebo klikněte pro výběr</h5>
+                                <p class="text-muted">Podporované formáty: PDF (max 50MB na soubor)</p>
+                                <input type="file" id="fileInput" multiple accept=".pdf" style="display: none;">
+                            </div>
+                            <div id="uploadStatus" class="mt-3"></div>
+                        </div>
+                    </div>
+
+                    <!-- Sekce 2: Seznam nahraných souborů -->
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-list"></i> 2. Nahrané soubory
+                            </h5>
+                            <div>
+                                <button class="btn btn-outline-primary btn-sm" onclick="refreshFiles()">
+                                    <i class="fas fa-sync-alt"></i> Obnovit
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm" onclick="clearAllFiles()">
+                                    <i class="fas fa-trash"></i> Smazat vše
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="filesList">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-file-pdf fa-2x mb-2"></i>
+                                    <p>Žádné soubory nebyly nahrány</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sekce 3: Ruční párování s drag & drop -->
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-link"></i> 3. Ruční párování souborů
+                            </h5>
+                            <div>
+                                <button class="btn btn-success me-2" onclick="autoPair()" id="autoPairBtn">
+                                    <i class="fas fa-magic"></i> Automatické párování
+                                </button>
+                                <button class="btn btn-outline-primary" onclick="clearPairs()" id="clearPairsBtn">
+                                    <i class="fas fa-trash"></i> Vymazat páry
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- Drag & Drop oblast pro párování -->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-center mb-3">
+                                        <i class="fas fa-file-pdf text-danger"></i> Dostupné soubory
+                                    </h6>
+                                    <div id="availableFiles" class="drag-drop-pairs">
+                                        <div class="text-center text-muted p-3">
+                                            <i class="fas fa-file-pdf fa-2x mb-2"></i>
+                                            <p>Žádné soubory nejsou k dispozici</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="text-center mb-3">
+                                        <i class="fas fa-link text-success"></i> Vytvořené páry
+                                    </h6>
+                                    <div id="pairsList" class="drag-drop-pairs">
+                                        <div class="text-center text-muted p-3">
+                                            <i class="fas fa-link fa-2x mb-2"></i>
+                                            <p>Přetáhněte soubory sem pro vytvoření párů</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Návod -->
+                            <div class="alert alert-info mt-3">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Jak párovat:</strong>
+                                <ul class="mb-0 mt-2">
+                                    <li>Přetáhněte soubor z levé strany do pravé pro vytvoření páru</li>
+                                    <li>Přetáhněte soubor zpět doleva pro odebrání z páru</li>
+                                    <li>Klikněte na "Automatické párování" pro rychlé spárování</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sekce 4: Nastavení a spuštění -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-cogs"></i> 4. Nastavení a spuštění
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="alert alert-success">
+                                        <i class="fas fa-print"></i>
+                                        <strong>Optimalizováno pro tiskárny novin:</strong>
+                                        <ul class="mb-0 mt-2">
+                                            <li><strong>Dynamická rotace:</strong> Automaticky podle pořadí stránek</li>
+                                            <li><strong>Pokud liché > sudé:</strong> +90° (doprava)</li>
+                                            <li><strong>Pokud liché < sudé:</strong> -90° (doleva)</li>
+                                            <li><strong>Textová editovatelnost:</strong> Zachována pro vyhledávání a kopírování</li>
+                                            <li><strong>Vektorová kvalita:</strong> Zachována pro ostrý tisk</li>
+                                            <li><strong>Velikost souboru:</strong> 3-4 MB (InDesign-like kvalita)</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">&nbsp;</label>
+                                    <div>
+                                        <button class="btn btn-primary btn-lg" onclick="startMerge()" id="mergeBtn">
+                                            <i class="fas fa-play"></i> Spustit slučování
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress bar -->
+                    <div class="card mb-4 progress-container" id="progressContainer">
+                        <div class="card-body">
+                            <h6>Zpracování...</h6>
+                            <div class="progress">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 0%" id="progressBar"></div>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted" id="progressText">Připravuji...</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sekce 5: Výsledky -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-check-circle"></i> 5. Výsledky
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="resultsList">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-file-export fa-2x mb-2"></i>
+                                    <p>Výsledky se zobrazí po dokončení zpracování</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar s informacemi -->
+            <div class="col-lg-4">
+                <div class="container mt-4">
+                    <!-- Informace o aplikaci -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-info-circle"></i> Informace
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="mt-3">Jak to funguje:</h6>
+                            <ol>
+                                <li>Nahrajte PDF soubory</li>
+                                <li>Automatické párování podle čísel</li>
+                                <li>Nastavte rotaci</li>
+                                <li>Spusťte slučování</li>
+                                <li>Stáhněte výsledky</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <!-- Statistiky -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-bar"></i> Statistiky
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <h4 class="text-primary" id="filesCount">0</h4>
+                                    <small class="text-muted">Nahrané soubory</small>
+                                </div>
+                                <div class="col-6">
+                                    <h4 class="text-success" id="pairsCount">0</h4>
+                                    <small class="text-muted">Vytvořené páry</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rychlé akce -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-bolt"></i> Rychlé akce
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-outline-primary" onclick="refreshFiles()">
+                                    <i class="fas fa-sync-alt"></i> Obnovit seznam
+                                </button>
+                                <button class="btn btn-outline-success" onclick="autoPair()">
+                                    <i class="fas fa-magic"></i> Automatické párování
+                                </button>
+                                <button class="btn btn-outline-danger" onclick="clearAllFiles()">
+                                    <i class="fas fa-trash"></i> Smazat vše
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Hlavní JavaScript -->
+    <script>
+        let currentFiles = [];
+        let currentPairs = [];
+        let currentTaskId = null;
+        let draggedElement = null;
+        let draggedData = null;
+
+        // Inicializace
+        document.addEventListener('DOMContentLoaded', function() {
+            setupDragDrop();
+            setupPairingDragDrop();
+            refreshFiles();
+        });
+
+        // Drag & Drop funkcionalita
+        function setupDragDrop() {
+            const dragDropArea = document.getElementById('dragDropArea');
+            const fileInput = document.getElementById('fileInput');
+
+            dragDropArea.addEventListener('click', () => fileInput.click());
+            dragDropArea.addEventListener('dragover', handleDragOver);
+            dragDropArea.addEventListener('dragleave', handleDragLeave);
+            dragDropArea.addEventListener('drop', handleDrop);
+            fileInput.addEventListener('change', handleFileSelect);
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files).filter(file => 
+                file.type === 'application/pdf'
+            );
+            uploadFiles(files);
+        }
+
+        function handleFileSelect(e) {
+            const files = Array.from(e.target.files);
+            uploadFiles(files);
+        }
+
+        // Nahrávání souborů
+        async function uploadFiles(files) {
+            if (files.length === 0) return;
+
+            const formData = new FormData();
+            files.forEach(file => formData.append('files', file));
+
+            try {
+                showStatus('Nahrávám soubory...', 'info');
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showStatus(`Úspěšně nahráno ${result.uploaded_files.length} souborů`, 'success');
+                    refreshFiles();
+                } else {
+                    showStatus(`Chyba: ${result.error}`, 'danger');
+                }
+            } catch (error) {
+                showStatus(`Chyba při nahrávání: ${error.message}`, 'danger');
+            }
+        }
+
+        // Zobrazení stavu
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('uploadStatus');
+            statusDiv.innerHTML = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+        }
+
+        // Obnovení seznamu souborů
+        async function refreshFiles() {
+            try {
+                const response = await fetch('/api/files');
+                const result = await response.json();
+
+                if (result.success) {
+                    currentFiles = result.files;
+                    displayFiles(currentFiles);
+                    updateStats();
+                } else {
+                    showStatus(`Chyba při načítání souborů: ${result.error}`, 'danger');
+                }
+            } catch (error) {
+                showStatus(`Chyba: ${error.message}`, 'danger');
+            }
+        }
+
+        // Zobrazení souborů
+        function displayFiles(files) {
+            const filesList = document.getElementById('filesList');
+            const availableFiles = document.getElementById('availableFiles');
+            
+            if (files.length === 0) {
+                filesList.innerHTML = `
+                    <div class="text-center text-muted">
+                        <i class="fas fa-file-pdf fa-2x mb-2"></i>
+                        <p>Žádné soubory nebyly nahrány</p>
+                    </div>
+                `;
+                availableFiles.innerHTML = `
+                    <div class="text-center text-muted p-3">
+                        <i class="fas fa-file-pdf fa-2x mb-2"></i>
+                        <p>Žádné soubory nejsou k dispozici</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Zobrazení v původním seznamu
+            filesList.innerHTML = files.map(file => `
+                <div class="file-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">
+                                <i class="fas fa-file-pdf text-danger"></i> ${file.name}
+                            </h6>
+                            <small class="text-muted">
+                                Stránka: ${file.page_number} | Velikost: ${file.size_mb} MB | 
+                                Nahráno: ${file.upload_time}
+                            </small>
+                        </div>
+                        <span class="badge bg-${file.page_number % 2 === 0 ? 'primary' : 'success'} status-badge">
+                            ${file.page_number % 2 === 0 ? 'Sudá' : 'Lichá'}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+
+            // Zobrazení v drag & drop oblasti
+            displayAvailableFiles(files);
+        }
+
+        // Zobrazení dostupných souborů pro drag & drop
+        function displayAvailableFiles(files) {
+            const availableFiles = document.getElementById('availableFiles');
+            
+            // Filtrujeme soubory, které už nejsou v párech
+            const usedFiles = new Set();
+            currentPairs.forEach(pair => {
+                usedFiles.add(pair.left_file);
+                usedFiles.add(pair.right_file);
+            });
+            
+            const availableFilesList = files.filter(file => !usedFiles.has(file.name));
+            
+            if (availableFilesList.length === 0) {
+                availableFiles.innerHTML = `
+                    <div class="text-center text-muted p-3">
+                        <i class="fas fa-check-circle fa-2x mb-2 text-success"></i>
+                        <p>Všechny soubory jsou spárované</p>
+                    </div>
+                `;
+                return;
+            }
+
+            availableFiles.innerHTML = availableFilesList.map(file => `
+                <div class="file-item-draggable" 
+                     draggable="true" 
+                     data-file='${JSON.stringify(file)}'
+                     ondragstart="handleDragStart(event)"
+                     ondragend="handleDragEnd(event)">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">
+                                <i class="fas fa-file-pdf text-danger"></i> ${file.name}
+                            </h6>
+                            <small class="text-muted">
+                                Stránka: ${file.page_number} | Velikost: ${file.size_mb} MB
+                            </small>
+                        </div>
+                        <span class="badge bg-${file.page_number % 2 === 0 ? 'primary' : 'success'} status-badge">
+                            ${file.page_number % 2 === 0 ? 'Sudá' : 'Lichá'}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Automatické párování
+        async function autoPair() {
+            try {
+                const response = await fetch('/api/auto-pair', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    currentPairs = result.pairs;
+                    displayPairs(currentPairs);
+                    displayAvailableFiles(currentFiles);
+                    updateStats();
+                    showStatus(`Vytvořeno ${result.count} párů`, 'success');
+                } else {
+                    showStatus(`Chyba při párování: ${result.error}`, 'danger');
+                }
+            } catch (error) {
+                showStatus(`Chyba: ${error.message}`, 'danger');
+            }
+        }
+
+        // Zobrazení párů
+        function displayPairs(pairs) {
+            const pairsList = document.getElementById('pairsList');
+            
+            if (pairs.length === 0) {
+                pairsList.innerHTML = `
+                    <div class="text-center text-muted p-3">
+                        <i class="fas fa-link fa-2x mb-2"></i>
+                        <p>Přetáhněte soubory sem pro vytvoření párů</p>
+                    </div>
+                `;
+                return;
+            }
+
+            pairsList.innerHTML = pairs.map((pair, index) => `
+                <div class="pair-item-draggable" 
+                     data-pair='${JSON.stringify(pair)}'
+                     ondragstart="handlePairDragStart(event)"
+                     ondragend="handleDragEnd(event)">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">Pár ${index + 1}</h6>
+                            <small class="text-muted">
+                                <i class="fas fa-file-pdf text-danger"></i> ${pair.left_file} (stránka ${pair.left_page})<br>
+                                <i class="fas fa-file-pdf text-danger"></i> ${pair.right_file} (stránka ${pair.right_page})
+                            </small>
+                        </div>
+                        <div>
+                            <span class="badge bg-success status-badge me-2">
+                                <i class="fas fa-check"></i> Spárováno
+                            </span>
+                            <button class="btn btn-outline-danger btn-sm" onclick="removePair(${index})">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Drag & Drop funkce
+        function handleDragStart(event) {
+            draggedElement = event.target;
+            draggedData = JSON.parse(event.target.dataset.file);
+            event.target.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handlePairDragStart(event) {
+            draggedElement = event.target;
+            draggedData = JSON.parse(event.target.dataset.pair);
+            event.target.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragEnd(event) {
+            event.target.classList.remove('dragging');
+            draggedElement = null;
+            draggedData = null;
+        }
+
+        // Nastavení drag & drop pro párování
+        function setupPairingDragDrop() {
+            const pairsList = document.getElementById('pairsList');
+            
+            pairsList.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                this.classList.add('dragover');
+            });
+            
+            pairsList.addEventListener('dragleave', function(e) {
+                this.classList.remove('dragover');
+            });
+            
+            pairsList.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+                
+                if (draggedData && draggedData.name) {
+                    // Přidání souboru do páru
+                    addFileToPair(draggedData);
+                }
+            });
+        }
+
+        // Přidání souboru do páru
+        function addFileToPair(file) {
+            // Najdeme neúplný pár nebo vytvoříme nový
+            let incompletePair = currentPairs.find(pair => !pair.right_file);
+            
+            if (!incompletePair) {
+                // Vytvoření nového páru
+                incompletePair = {
+                    left_file: file.name,
+                    right_file: null,
+                    left_page: file.page_number,
+                    right_page: null
+                };
+                currentPairs.push(incompletePair);
+            } else {
+                // Dokončení existujícího páru
+                incompletePair.right_file = file.name;
+                incompletePair.right_page = file.page_number;
+            }
+            
+            // Aktualizace zobrazení
+            displayPairs(currentPairs);
+            displayAvailableFiles(currentFiles);
+            updateStats();
+        }
+
+        // Odebrání páru
+        function removePair(index) {
+            currentPairs.splice(index, 1);
+            displayPairs(currentPairs);
+            displayAvailableFiles(currentFiles);
+            updateStats();
+        }
+
+        // Vymazání všech párů
+        function clearPairs() {
+            currentPairs = [];
+            displayPairs(currentPairs);
+            displayAvailableFiles(currentFiles);
+            updateStats();
+        }
+
+        // Spuštění slučování
+        async function startMerge() {
+            if (currentPairs.length === 0) {
+                showStatus('Nejdříve vytvořte páry souborů', 'warning');
+                return;
+            }
+
+            // Automatická rotace pro tiskárny - není potřeba uživatelské nastavení
+            const rotation = 0; // Nepoužívá se, rotace je automatická
+            
+            try {
+                const response = await fetch('/api/merge', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        pairs: currentPairs,
+                        rotation: parseInt(rotation)
+                    })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    currentTaskId = result.task_id;
+                    showProgress();
+                    monitorTask();
+                    showStatus('Zpracování bylo spuštěno', 'info');
+                } else {
+                    showStatus(`Chyba: ${result.error}`, 'danger');
+                }
+            } catch (error) {
+                showStatus(`Chyba: ${error.message}`, 'danger');
+            }
+        }
+
+        // Zobrazení progress baru
+        function showProgress() {
+            document.getElementById('progressContainer').style.display = 'block';
+            document.getElementById('mergeBtn').disabled = true;
+        }
+
+        // Sledování úlohy
+        async function monitorTask() {
+            if (!currentTaskId) return;
+
+            try {
+                const response = await fetch(`/api/task/${currentTaskId}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    const task = result.task;
+                    updateProgress(task);
+                    
+                    if (task.status === 'completed') {
+                        displayResults(task.results);
+                        hideProgress();
+                        showStatus('Zpracování dokončeno!', 'success');
+                    } else if (task.status === 'error') {
+                        hideProgress();
+                        showStatus(`Chyba: ${task.error}`, 'danger');
+                    } else {
+                        setTimeout(monitorTask, 1000);
+                    }
+                }
+            } catch (error) {
+                hideProgress();
+                showStatus(`Chyba při sledování úlohy: ${error.message}`, 'danger');
+            }
+        }
+
+        // Aktualizace progress baru
+        function updateProgress(task) {
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            
+            progressBar.style.width = `${task.progress}%`;
+            progressText.textContent = `Zpracováno ${task.completed}/${task.total} párů`;
+        }
+
+        // Skrytí progress baru
+        function hideProgress() {
+            document.getElementById('progressContainer').style.display = 'none';
+            document.getElementById('mergeBtn').disabled = false;
+        }
+
+        // Zobrazení výsledků
+        function displayResults(results) {
+            const resultsList = document.getElementById('resultsList');
+            
+            if (results.success.length === 0) {
+                resultsList.innerHTML = `
+                    <div class="text-center text-muted">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                        <p>Žádné soubory nebyly vytvořeny</p>
+                    </div>
+                `;
+                return;
+            }
+
+            resultsList.innerHTML = results.success.map(result => `
+                <div class="result-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">
+                                <i class="fas fa-file-pdf text-success"></i> ${result.filename}
+                            </h6>
+                            <small class="text-muted">
+                                Velikost: ${result.size_mb} MB | 
+                                Z ${result.left_file} + ${result.right_file}
+                            </small>
+                        </div>
+                        <div>
+                            <a href="/api/download/${result.filename}" class="btn btn-success btn-sm">
+                                <i class="fas fa-download"></i> Stáhnout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Aktualizace statistik
+        function updateStats() {
+            document.getElementById('filesCount').textContent = currentFiles.length;
+            document.getElementById('pairsCount').textContent = currentPairs.length;
+        }
+
+        // Vyčištění všech souborů
+        async function clearAllFiles() {
+            if (!confirm('Opravdu chcete smazat všechny soubory?')) return;
+
+            try {
+                const response = await fetch('/api/clear', {
+                    method: 'POST'
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showStatus('Všechny soubory byly smazány', 'success');
+                    refreshFiles();
+                    currentPairs = [];
+                    displayPairs([]);
+                    displayAvailableFiles([]);
+                    updateStats();
+                } else {
+                    showStatus(`Chyba: ${result.error}`, 'danger');
+                }
+            } catch (error) {
+                showStatus(`Chyba: ${error.message}`, 'danger');
+            }
+        }
+    </script>
+</body>
+</html>
