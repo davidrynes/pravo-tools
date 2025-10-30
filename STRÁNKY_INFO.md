@@ -16,17 +16,22 @@ PRYYMMDDXXBBB.pdf
 
 Kde:
 - `PR` = Prefix (např. PRAVO, PR)
-- `YYMMDD` = Datum vydání (např. 250130 = 30. ledna 2025)
-- `XX` = **Číslo stránky** (01 až 99)
-- `BBB` = Mutace/verze (např. 001, NEW, FINAL)
+- `YYMMDD` = Datum vydání (např. 251030 = 30. října 2025)
+- `XX` = **Číslo stránky** (01 až 99) - **4. a 5. znak od konce**
+- `BBB` = Mutace/verze (např. VY1, 001, FINAL)
 
 **Příklady:**
 ```
-PRAVO_NEW_TEST03_FINAL_02.pdf  →  Strana 02 (sudá)
-PRAVO_NEW_TEST03_FINAL_03.pdf  →  Strana 03 (lichá)
-PRAVO_NEW_TEST03_FINAL_40.pdf  →  Strana 40 (sudá)
-PR2501301001.pdf               →  Strana 10 (sudá)
+PR25103001VY1.pdf              →  Strana 01 (lichá)  🟢
+PR25103002VY1.pdf              →  Strana 02 (sudá)   🔵
+PR25103003VY1.pdf              →  Strana 03 (lichá)  🟢
+PR25103040VY1.pdf              →  Strana 40 (sudá)   🔵
+PRAVO_NEW_TEST03_FINAL_02.pdf  →  Strana 02 (sudá)   🔵 (fallback)
 ```
+
+**Jak to funguje:**
+- Aplikace extrahuje **4. a 5. znak od konce názvu** (před BBB)
+- `PR25103001VY1` → znaky na pozici [-5:-3] = `01`
 
 ### 2. **Standardní Formát** (fallback)
 
@@ -129,19 +134,31 @@ Detekce probíhá ve funkci `parse_page_number()` v souboru `web_app.py`:
 def parse_page_number(self, filename: str) -> int:
     name = Path(filename).stem
     
-    # Extrahuje poslední 2 znaky jako číslo stránky
+    # Primární: Extrahuje 4. a 5. znak od konce (před BBB)
+    # Formát: PRYYMMDDXXBBB -> XX jsou na pozici [-5:-3]
+    if len(name) >= 5:
+        page_chars = name[-5:-3]
+        if page_chars.isdigit():
+            return int(page_chars)
+    
+    # Fallback 1: poslední 2 znaky
     if len(name) >= 2:
         last_two = name[-2:]
         if last_two.isdigit():
             return int(last_two)
     
-    # Fallback: číslo za posledním podtržítkem
+    # Fallback 2: číslo za posledním podtržítkem
     parts = name.split('_')
     if parts and parts[-1].isdigit():
         return int(parts[-1])
     
     return 0
 ```
+
+**Vysvětlení:**
+- `name[-5:-3]` = znaky na pozici -5 a -4 (4. a 5. znak od konce)
+- Pro `PR25103001VY1`: `01` (před `VY1`)
+- Pro `PR25103040VY1`: `40` (před `VY1`)
 
 ---
 

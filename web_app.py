@@ -56,24 +56,32 @@ class WebPDFMerger:
         Extrahuje číslo stránky z názvu souboru.
         
         Podporuje formáty:
-        1. PRYYMMDDXXBBB.pdf - extrahuje poslední 2 číslice (XX)
+        1. PRYYMMDDXXBBB.pdf - XX je na pozici -5:-3 (4. a 5. znak od konce)
         2. název_číslo.pdf - extrahuje číslo za poslední podtržítkem
         
         Příklady:
-        - PRAVO_NEW_TEST03_FINAL_02.pdf -> 02
-        - PR2501301001.pdf -> 10
-        - myfile_15.pdf -> 15
+        - PR25103001VY1.pdf -> 01 (znaky na pozici -5:-3)
+        - PR25103040VY1.pdf -> 40 (znaky na pozici -5:-3)
+        - PRAVO_NEW_TEST03_FINAL_02.pdf -> 02 (fallback)
+        - myfile_15.pdf -> 15 (fallback)
         """
         try:
             name = Path(filename).stem
             
-            # Zkusíme extrahovat poslední 2 znaky jako číslo stránky
+            # Primární metoda: extrahujeme 4. a 5. znak od konce (před posledními 3 znaky)
+            # Formát: PRYYMMDDXXBBB -> XX jsou na pozici [-5:-3]
+            if len(name) >= 5:
+                page_chars = name[-5:-3]
+                if page_chars.isdigit():
+                    return int(page_chars)
+            
+            # Fallback 1: zkusíme poslední 2 znaky
             if len(name) >= 2:
                 last_two = name[-2:]
                 if last_two.isdigit():
                     return int(last_two)
             
-            # Fallback: zkusíme najít číslo za posledním podtržítkem
+            # Fallback 2: zkusíme najít číslo za posledním podtržítkem
             parts = name.split('_')
             if parts:
                 last_part = parts[-1]
