@@ -7,6 +7,7 @@ Aplikace pro spojování dvou PDF souborů do jedné dvoustrany s rotací a expo
 - ✅ Spojení dvou PDF souborů do jedné dvoustrany
 - ✅ Rotace o 90 stupňů (doleva nebo doprava) - **výchozí je -90° (doleva)**
 - ✅ Export s profilem PDF/X-1a:2001
+- ✅ **Automatická detekce čísla stránky z názvu souboru** 🆕
 - ✅ Automatické rozpoznání sudých/lichých čísel stránek
 - ✅ Vysoká kvalita výstupu (300 DPI)
 - ✅ Podpora pro všechny PDF formáty
@@ -187,17 +188,23 @@ pdf-merge/
 
 ## Jak to funguje
 
-1. **Rozpoznání párových souborů**: Aplikace automaticky rozpozná soubory podle čísel na konci názvu
+1. **Automatická detekce čísla stránky**: Aplikace detekuje číslo stránky přímo z názvu souboru
+   - Podporuje formát: `PRYYMMDDXXBBB.pdf` (extrahuje poslední 2 číslice XX)
+   - Příklad: `PRAVO_NEW_TEST03_FINAL_02.pdf` → Strana 02
+   - Fallback: `název_číslo.pdf` → extrahuje číslo za posledním podtržítkem
+   - **Více informací**: viz [STRÁNKY_INFO.md](STRÁNKY_INFO.md)
+
+2. **Rozpoznání párových souborů**: Aplikace automaticky rozpozná páry podle čísel stránek
    - Sudé číslo (02, 04, 14) = levá stránka
    - Liché číslo (03, 05, 15) = pravá stránka
 
-2. **Konverze na obrázky**: PDF soubory se konvertují na vysokokvalitní obrázky (300 DPI)
+3. **Konverze na obrázky**: PDF soubory se konvertují na vysokokvalitní obrázky (300 DPI)
 
-3. **Spojení**: Obrázky se spojí vedle sebe do jednoho obrázku
+4. **Spojení**: Obrázky se spojí vedle sebe do jednoho obrázku
 
-4. **Rotace**: Výsledný obrázek se otočí o 90 stupňů
+5. **Rotace**: Výsledný obrázek se otočí o 90 stupňů (automaticky podle pořadí stránek)
 
-5. **Export**: Obrázek se exportuje jako PDF s profilem PDF/X-1a:2001
+6. **Export**: Obrázek se exportuje jako PDF s profilem PDF/X-1a:2001
 
 ## Výstup
 
