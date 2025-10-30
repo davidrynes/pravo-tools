@@ -52,16 +52,37 @@ class WebPDFMerger:
         self.merger.output_dir = OUTPUT_FOLDER
     
     def parse_page_number(self, filename: str) -> int:
-        """Extrahuje číslo stránky z názvu souboru"""
+        """
+        Extrahuje číslo stránky z názvu souboru.
+        
+        Podporuje formáty:
+        1. PRYYMMDDXXBBB.pdf - extrahuje poslední 2 číslice (XX)
+        2. název_číslo.pdf - extrahuje číslo za poslední podtržítkem
+        
+        Příklady:
+        - PRAVO_NEW_TEST03_FINAL_02.pdf -> 02
+        - PR2501301001.pdf -> 10
+        - myfile_15.pdf -> 15
+        """
         try:
             name = Path(filename).stem
+            
+            # Zkusíme extrahovat poslední 2 znaky jako číslo stránky
+            if len(name) >= 2:
+                last_two = name[-2:]
+                if last_two.isdigit():
+                    return int(last_two)
+            
+            # Fallback: zkusíme najít číslo za posledním podtržítkem
             parts = name.split('_')
             if parts:
                 last_part = parts[-1]
                 if last_part.isdigit():
                     return int(last_part)
+            
             return 0
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Chyba při parsování čísla stránky z '{filename}': {e}")
             return 0
     
     def get_uploaded_files(self) -> list:
