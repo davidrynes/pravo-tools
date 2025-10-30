@@ -108,19 +108,25 @@ python advanced_pdf_merger.py --auto
 
 ## 🖨️ Dynamická rotace pro tiskárny
 
-Aplikace automaticky aplikuje správnou rotaci podle pořadí stránek:
+Aplikace **automaticky aplikuje správnou rotaci** podle vztahu mezi lichými a sudými stránkami:
 
-- **Pokud liché číslo > sudé číslo**: +90° (doprava)
-- **Pokud liché číslo < sudé číslo**: -90° (doleva)
+### 📐 Logika rotace:
+- **Pokud lichá > sudá**: **+90°** (doprava) ↻
+- **Pokud lichá < sudá**: **-90°** (doleva) ↺
 - **Zachovává kvalitu**: InDesign-like přístup s přímým kopírováním PDF objektů
 - **Textová editovatelnost**: Zachována pro vyhledávání a kopírování
 
-**Příklady:**
-- Stránky 2-3: liché (3) > sudé (2) → rotace +90°
-- Stránky 14-15: liché (15) > sudé (14) → rotace +90°
-- Stránky 3-2: liché (3) < sudé (2) → rotace -90°
+### 📊 Příklady:
+| Pár stránek | Lichá | Sudá | Porovnání | Rotace | Popis |
+|-------------|-------|------|-----------|--------|-------|
+| 2-3 | 3 | 2 | 3 > 2 | **+90°** ↻ | Přední strany |
+| 4-5 | 5 | 4 | 5 > 4 | **+90°** ↻ | Přední strany |
+| 40-39 | 39 | 40 | 39 < 40 | **-90°** ↺ | Zadní strany |
+| 38-37 | 37 | 38 | 37 < 38 | **-90°** ↺ | Zadní strany |
+| 1-2 | 1 | 2 | 1 < 2 | **-90°** ↺ | Liché < sudé |
+| 3-2 | 3 | 2 | 3 > 2 | **+90°** ↻ | Liché > sudé |
 
-Toto zajišťuje, že PDF bude správně orientované pro tiskárny novin podle pořadí stránek.
+**Toto zajišťuje, že PDF bude správně orientované pro tiskárny novin bez ohledu na pořadí stránek v páru.**
 
 ## 🔄 InDesign-like přístup
 
