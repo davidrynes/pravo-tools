@@ -123,22 +123,15 @@ class WebPDFMerger:
                 left_file_path = UPLOAD_FOLDER / left_file
                 right_file_path = UPLOAD_FOLDER / right_file
                 
-                # Dynamická rotace podle vztahu lichá vs sudá stránka
-                # Zjistíme, která stránka je lichá a která sudá
-                if left_page % 2 == 0:  # Levá je sudá
-                    odd_page = right_page
-                    even_page = left_page
-                else:  # Levá je lichá
-                    odd_page = left_page
-                    even_page = right_page
-                
-                # Logika: Pokud liché > sudé: +90°, Pokud liché < sudé: -90°
-                if odd_page > even_page:
+                # Dynamická rotace pro oboustranný tisk
+                # PŘEDNÍ STRANA (sudá-lichá): 2-3, 4-5, 6-7 → +90° (všechny stejně)
+                # ZADNÍ STRANA (lichá-sudá): 3-4, 5-6, 7-8 → -90° (všechny opačně)
+                if left_page % 2 == 0:  # Levá je sudá → Přední strana
                     rotation = 90
-                    logger.info(f"Rotace +90° (lichá {odd_page} > sudá {even_page})")
-                else:
+                    logger.info(f"Přední strana ({left_page}-{right_page}): Rotace +90°")
+                else:  # Levá je lichá → Zadní strana
                     rotation = -90
-                    logger.info(f"Rotace -90° (lichá {odd_page} < sudá {even_page})")
+                    logger.info(f"Zadní strana ({left_page}-{right_page}): Rotace -90°")
                 
                 success = self.merger.create_side_by_side_pdf_with_rotation(
                     left_file_path, right_file_path, output_path, rotation

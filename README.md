@@ -106,27 +106,34 @@ python advanced_pdf_merger.py --auto
 4. **Nastavení**: Vyberte rotaci (-90° nebo +90°) a kvalitu (DPI)
 5. **Spuštění**: Klikněte na "Sloučit PDF soubory"
 
-## 🖨️ Dynamická rotace pro tiskárny
+## 🖨️ Dynamická rotace pro oboustranný tisk
 
-Aplikace **automaticky aplikuje správnou rotaci** podle vztahu mezi lichými a sudými stránkami:
+Aplikace **automaticky aplikuje správnou rotaci** pro oboustranný tisk v tiskárnách:
 
 ### 📐 Logika rotace:
-- **Pokud lichá > sudá**: **+90°** (doprava) ↻
-- **Pokud lichá < sudá**: **-90°** (doleva) ↺
+- **Levá stránka SUDÁ** (2, 4, 6...): **+90°** (doprava) ↻ → **Přední strana listu**
+- **Levá stránka LICHÁ** (3, 5, 7...): **-90°** (doleva) ↺ → **Zadní strana listu**
 - **Zachovává kvalitu**: InDesign-like přístup s přímým kopírováním PDF objektů
 - **Textová editovatelnost**: Zachována pro vyhledávání a kopírování
 
-### 📊 Příklady:
-| Pár stránek | Lichá | Sudá | Porovnání | Rotace | Popis |
-|-------------|-------|------|-----------|--------|-------|
-| 2-3 | 3 | 2 | 3 > 2 | **+90°** ↻ | Přední strany |
-| 4-5 | 5 | 4 | 5 > 4 | **+90°** ↻ | Přední strany |
-| 40-39 | 39 | 40 | 39 < 40 | **-90°** ↺ | Zadní strany |
-| 38-37 | 37 | 38 | 37 < 38 | **-90°** ↺ | Zadní strany |
-| 1-2 | 1 | 2 | 1 < 2 | **-90°** ↺ | Liché < sudé |
-| 3-2 | 3 | 2 | 3 > 2 | **+90°** ↻ | Liché > sudé |
+### 📊 Příklady pro oboustranný tisk:
+| Pár | Levá | Pravá | Typ | Rotace | Po otočení |
+|-----|------|-------|-----|--------|------------|
+| 2-3 | 2 (S) | 3 (L) | Přední | **+90°** ↻ | Správně orientováno |
+| 3-4 | 3 (L) | 4 (S) | Zadní | **-90°** ↺ | Správně orientováno |
+| 4-5 | 4 (S) | 5 (L) | Přední | **+90°** ↻ | Správně orientováno |
+| 5-6 | 5 (L) | 6 (S) | Zadní | **-90°** ↺ | Správně orientováno |
+| 6-7 | 6 (S) | 7 (L) | Přední | **+90°** ↻ | Správně orientováno |
+| 7-8 | 7 (L) | 8 (S) | Zadní | **-90°** ↺ | Správně orientováno |
 
-**Toto zajišťuje, že PDF bude správně orientované pro tiskárny novin bez ohledu na pořadí stránek v páru.**
+### 🖨️ Proces v tiskárně:
+```
+LIST 1: Přední (2-3) +90° ↻  |  Zadní (3-4) -90° ↺
+LIST 2: Přední (4-5) +90° ↻  |  Zadní (5-6) -90° ↺  
+LIST 3: Přední (6-7) +90° ↻  |  Zadní (7-8) -90° ↺
+```
+
+**Toto zajišťuje, že po oboustranném tisku a složení budou všechny strany správně orientované! ✅**
 
 ## 🔄 InDesign-like přístup
 
