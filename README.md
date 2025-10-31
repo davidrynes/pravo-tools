@@ -106,34 +106,49 @@ python advanced_pdf_merger.py --auto
 4. **Nastavení**: Vyberte rotaci (-90° nebo +90°) a kvalitu (DPI)
 5. **Spuštění**: Klikněte na "Sloučit PDF soubory"
 
-## 🖨️ Dynamická rotace pro oboustranný tisk
+## 🖨️ Oboustranný tisk dvojstran (novinový tisk)
 
-Aplikace **automaticky aplikuje správnou rotaci** pro oboustranný tisk v tiskárnách:
+Aplikace spojuje **dvě PDF stránky** do "dvojstrany" a aplikuje **automatickou rotaci** pro oboustranný tisk:
 
-### 📐 Logika rotace:
-- **Levá stránka SUDÁ** (2, 4, 6...): **+90°** (doprava) ↻ → **Přední strana listu**
-- **Levá stránka LICHÁ** (3, 5, 7...): **-90°** (doleva) ↺ → **Zadní strana listu**
+### 📐 Logika rotace podle pořadí páru:
+- **1. pár, 3. pár, 5. pár...** (liché pořadí) = **PŘEDNÍ strana papíru** → **+90°** ↻
+- **2. pár, 4. pár, 6. pár...** (sudé pořadí) = **ZADNÍ strana papíru** → **-90°** ↺
+- Každé PDF je **samostatná stránka**, používá se **pouze jednou**
 - **Zachovává kvalitu**: InDesign-like přístup s přímým kopírováním PDF objektů
 - **Textová editovatelnost**: Zachována pro vyhledávání a kopírování
 
-### 📊 Příklady pro oboustranný tisk:
-| Pár | Levá | Pravá | Typ | Rotace | Po otočení |
-|-----|------|-------|-----|--------|------------|
-| 2-3 | 2 (S) | 3 (L) | Přední | **+90°** ↻ | Správně orientováno |
-| 3-4 | 3 (L) | 4 (S) | Zadní | **-90°** ↺ | Správně orientováno |
-| 4-5 | 4 (S) | 5 (L) | Přední | **+90°** ↻ | Správně orientováno |
-| 5-6 | 5 (L) | 6 (S) | Zadní | **-90°** ↺ | Správně orientováno |
-| 6-7 | 6 (S) | 7 (L) | Přední | **+90°** ↻ | Správně orientováno |
-| 7-8 | 7 (L) | 8 (S) | Zadní | **-90°** ↺ | Správně orientováno |
+### 📊 Příklad oboustranného tisku dvojstran:
+| Fyzický papír | Strana papíru | Pořadí páru | PDF dvojstrana | Rotace |
+|---------------|---------------|-------------|----------------|--------|
+| **Papír 1** | Přední | 1. pár | PDF 2-3 | **+90°** ↻ |
+| **Papír 1** | Zadní | 2. pár | PDF 4-5 | **-90°** ↺ |
+| **Papír 2** | Přední | 3. pár | PDF 6-7 | **+90°** ↻ |
+| **Papír 2** | Zadní | 4. pár | PDF 8-9 | **-90°** ↺ |
+| **Papír 3** | Přední | 5. pár | PDF 10-11 | **+90°** ↻ |
+| **Papír 3** | Zadní | 6. pár | PDF 12-13 | **-90°** ↺ |
 
 ### 🖨️ Proces v tiskárně:
 ```
-LIST 1: Přední (2-3) +90° ↻  |  Zadní (3-4) -90° ↺
-LIST 2: Přední (4-5) +90° ↻  |  Zadní (5-6) -90° ↺  
-LIST 3: Přední (6-7) +90° ↻  |  Zadní (7-8) -90° ↺
+┌─────────────────────────────────────────────────────┐
+│                   PAPÍR 1                           │
+├─────────────────────────────────────────────────────┤
+│  PŘEDNÍ: 1. pár (2-3) → Rotace +90° ↻             │
+│  [Otočení papíru]                                   │
+│  ZADNÍ:  2. pár (4-5) → Rotace -90° ↺             │
+└─────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────┐
+│                   PAPÍR 2                           │
+├─────────────────────────────────────────────────────┤
+│  PŘEDNÍ: 3. pár (6-7) → Rotace +90° ↻             │
+│  [Otočení papíru]                                   │
+│  ZADNÍ:  4. pár (8-9) → Rotace -90° ↺             │
+└─────────────────────────────────────────────────────┘
+
+Po složení jsou všechny strany správně orientované! ✅
 ```
 
-**Toto zajišťuje, že po oboustranném tisku a složení budou všechny strany správně orientované! ✅**
+**Důležité:** Pořadí párů v aplikaci určuje rotaci! První pár v seznamu bude přední strana prvního papíru (+90°), druhý pár bude zadní strana prvního papíru (-90°), atd.
 
 ## 🔄 InDesign-like přístup
 

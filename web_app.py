@@ -107,7 +107,7 @@ class WebPDFMerger:
             'total_files': len(file_pairs)
         }
         
-        for i, pair in enumerate(file_pairs):
+        for i, pair in enumerate(file_pairs, start=1):  # start=1 pro 1-based pořadí
             try:
                 # Extrakce názvů souborů z páru
                 left_file = pair['left_file']
@@ -119,19 +119,24 @@ class WebPDFMerger:
                 output_name = f"merged_{left_page:02d}_{right_page:02d}_web.pdf"
                 output_path = OUTPUT_FOLDER / output_name
                 
-                # Spojení souborů s dynamickou rotací podle pořadí stránek
+                # Spojení souborů s rotací
                 left_file_path = UPLOAD_FOLDER / left_file
                 right_file_path = UPLOAD_FOLDER / right_file
                 
-                # Dynamická rotace pro oboustranný tisk
-                # PŘEDNÍ STRANA (sudá-lichá): 2-3, 4-5, 6-7 → +90° (všechny stejně)
-                # ZADNÍ STRANA (lichá-sudá): 3-4, 5-6, 7-8 → -90° (všechny opačně)
-                if left_page % 2 == 0:  # Levá je sudá → Přední strana
+                # OBOUSTRANNÝ TISK DVOJSTRAN:
+                # - 1. pár (2-3) = PŘEDNÍ strana papíru → +90°
+                # - 2. pár (4-5) = ZADNÍ strana papíru  → -90°
+                # - 3. pár (6-7) = PŘEDNÍ strana papíru → +90°
+                # - 4. pár (8-9) = ZADNÍ strana papíru  → -90°
+                # Rotace závisí na POŘADÍ PÁRU (liché = přední, sudé = zadní)
+                if i % 2 == 1:  # Liché pořadí (1, 3, 5...) = Přední strana
                     rotation = 90
-                    logger.info(f"Přední strana ({left_page}-{right_page}): Rotace +90°")
-                else:  # Levá je lichá → Zadní strana
+                    side = "Přední"
+                else:  # Sudé pořadí (2, 4, 6...) = Zadní strana
                     rotation = -90
-                    logger.info(f"Zadní strana ({left_page}-{right_page}): Rotace -90°")
+                    side = "Zadní"
+                
+                logger.info(f"{i}. pár ({left_page}-{right_page}): {side} strana → Rotace {rotation}°")
                 
                 success = self.merger.create_side_by_side_pdf_with_rotation(
                     left_file_path, right_file_path, output_path, rotation
