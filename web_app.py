@@ -17,11 +17,18 @@ import threading
 import time
 from datetime import datetime
 
-# Import naší PDF merger třídy
+# Import naší PDF merger třídy a pairing logiky
 try:
     from indesign_like_pdf_merger import InDesignLikePDFMerger
-except ImportError:
-    print("Chyba: Nelze importovat InDesignLikePDFMerger")
+    from pairing_logic import (
+        get_pairing_key, 
+        validate_pair, 
+        auto_pair_files, 
+        ensure_odd_on_right,
+        PAIRING_KEYS
+    )
+except ImportError as e:
+    print(f"Chyba: Nelze importovat moduly: {e}")
     sys.exit(1)
 
 # Nastavení logování
@@ -31,7 +38,7 @@ logger = logging.getLogger(__name__)
 # Vytvoření Flask aplikace
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'pdf-merger-web-app-2024'
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max
+app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB max (pro až 80 souborů)
 
 # Konfigurace složek
 UPLOAD_FOLDER = Path('uploads')
@@ -112,10 +119,17 @@ class WebPDFMerger:
                 # Extrakce názvů souborů z páru
                 left_file = pair['left_file']
                 right_file = pair['right_file']
-                
-                # Vytvoření názvu výstupního souboru
                 left_page = self.parse_page_number(left_file)
                 right_page = self.parse_page_number(right_file)
+                
+                # ZAJIŠTĚNÍ: Liché strany vždy vpravo!
+                # Pokud je levá stránka lichá, prohodíme
+                if left_page % 2 == 1:  # Levá je lichá
+                    left_file, right_file = right_file, left_file
+                    left_page, right_page = right_page, left_page
+                    logger.info(f"Pár přehozen: Liché ({right_page}) je nyní vpravo")
+                
+                # Vytvoření názvu výstupního souboru
                 output_name = f"merged_{left_page:02d}_{right_page:02d}_web.pdf"
                 output_path = OUTPUT_FOLDER / output_name
                 
@@ -124,10 +138,10 @@ class WebPDFMerger:
                 right_file_path = UPLOAD_FOLDER / right_file
                 
                 # OBOUSTRANNÝ TISK DVOJSTRAN:
-                # - 1. pár (2-3) = PŘEDNÍ strana papíru → +90°
-                # - 2. pár (4-5) = ZADNÍ strana papíru  → -90°
-                # - 3. pár (6-7) = PŘEDNÍ strana papíru → +90°
-                # - 4. pár (8-9) = ZADNÍ strana papíru  → -90°
+                # - 1. pár = PŘEDNÍ strana papíru → +90°
+                # - 2. pár = ZADNÍ strana papíru  → -90°
+                # - 3. pár = PŘEDNÍ strana papíru → +90°
+                # - 4. pár = ZADNÍ strana papíru  → -90°
                 # Rotace závisí na POŘADÍ PÁRU (liché = přední, sudé = zadní)
                 if i % 2 == 1:  # Liché pořadí (1, 3, 5...) = Přední strana
                     rotation = 90
@@ -148,13 +162,18 @@ class WebPDFMerger:
                         'filename': output_name,
                         'size_mb': round(file_size, 1),
                         'left_file': Path(left_file).name,
-                        'right_file': Path(right_file).name
+                        'right_file': Path(right_file).name,
+                        'left_page': left_page,
+                        'right_page': right_page,
+                        'rotation': rotation,
+                        'pair_index': i
                     })
                 else:
                     results['errors'].append(f"Chyba při spojování {left_file} + {right_file}")
                     
             except Exception as e:
-                results['errors'].append(f"Chyba při zpracování páru {i+1}: {str(e)}")
+                results['errors'].append(f"Chyba při zpracování páru {i}: {str(e)}")
+                logger.error(f"Chyba při zpracování páru {i}: {e}")
         
         return results
 
@@ -231,45 +250,106 @@ def upload_files():
             'error': str(e)
         })
 
+@app.route('/api/page-counts', methods=['GET'])
+def get_page_counts():
+    """API endpoint pro získání podporovaných rozsahů vydání"""
+    return jsonify({
+        'success': True,
+        'page_counts': list(PAIRING_KEYS.keys()),
+        'default': 40
+    })
+
+@app.route('/api/validate-pair', methods=['POST'])
+def validate_pair_endpoint():
+    """API endpoint pro validaci páru"""
+    try:
+        data = request.get_json()
+        left_page = int(data.get('left_page'))
+        right_page = int(data.get('right_page'))
+        page_count = int(data.get('page_count', 40))
+        
+        is_valid = validate_pair(left_page, right_page, page_count)
+        
+        if not is_valid:
+            # Najdeme správný pár pro levou stránku
+            pairing_key = get_pairing_key(page_count)
+            correct_pair = None
+            for l, r in pairing_key:
+                if l == left_page:
+                    correct_pair = r
+                    break
+                if r == left_page:
+                    correct_pair = l
+                    break
+            
+            return jsonify({
+                'success': True,
+                'valid': False,
+                'message': f'Neplatný pár! Ke straně {left_page} patří strana {correct_pair}',
+                'correct_pair': correct_pair
+            })
+        
+        return jsonify({
+            'success': True,
+            'valid': True,
+            'message': 'Platný pár'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
 @app.route('/api/auto-pair', methods=['POST'])
 def auto_pair():
-    """API endpoint pro automatické párování souborů"""
+    """API endpoint pro automatické párování souborů podle klíče"""
     try:
-        files = web_merger.get_uploaded_files()
-        pairs = []
+        data = request.get_json()
+        page_count = int(data.get('page_count', 40))  # Výchozí 40 stran
         
-        # Seskupení souborů podle čísel stránek
-        page_groups = {}
+        if page_count not in PAIRING_KEYS:
+            return jsonify({
+                'success': False,
+                'error': f'Nepodporovaný rozsah vydání: {page_count}. Podporované: {list(PAIRING_KEYS.keys())}'
+            })
+        
+        files = web_merger.get_uploaded_files()
+        
+        # Vytvoříme slovník page_number -> filename
+        page_to_file = {}
         for file_path in files:
             page_num = web_merger.parse_page_number(file_path.name)
-            if page_num not in page_groups:
-                page_groups[page_num] = []
-            page_groups[page_num].append(file_path)
+            if page_num > 0:
+                page_to_file[page_num] = file_path.name
         
-        # Vytvoření párů
-        for page_num in sorted(page_groups.keys()):
-            if page_num % 2 == 0:  # Sudé číslo - levá stránka
-                left_files = page_groups[page_num]
-                right_page_num = page_num + 1
-                
-                if right_page_num in page_groups:
-                    right_files = page_groups[right_page_num]
-                    
-                    # Vezme první soubor z každé skupiny
-                    pairs.append({
-                        'left_file': left_files[0].name,
-                        'right_file': right_files[0].name,
-                        'left_page': page_num,
-                        'right_page': right_page_num
-                    })
+        # Získáme klíč párování pro daný rozsah
+        pairing_key = get_pairing_key(page_count)
+        
+        # Vytvoříme páry podle klíče
+        pairs = []
+        for left_page, right_page in pairing_key:
+            # Musíme mít obě stránky
+            if left_page in page_to_file and right_page in page_to_file:
+                pairs.append({
+                    'left_file': page_to_file[left_page],
+                    'right_file': page_to_file[right_page],
+                    'left_page': left_page,
+                    'right_page': right_page
+                })
+            else:
+                logger.warning(f"Chybí stránka pro pár {left_page}-{right_page}")
         
         return jsonify({
             'success': True,
             'pairs': pairs,
-            'count': len(pairs)
+            'count': len(pairs),
+            'page_count': page_count,
+            'message': f'Spárováno {len(pairs)} párů podle klíče pro {page_count} stran'
         })
         
     except Exception as e:
+        logger.error(f"Chyba při auto-párování: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -358,7 +438,27 @@ def download_file(filename):
     try:
         file_path = OUTPUT_FOLDER / secure_filename(filename)
         if file_path.exists():
-            return send_file(file_path, as_attachment=True)
+            # Odeslání souboru
+            response = send_file(file_path, as_attachment=True)
+            
+            # Po odeslání smažeme soubor (pokud je query param auto_delete=true)
+            auto_delete = request.args.get('auto_delete', 'false').lower() == 'true'
+            if auto_delete:
+                # Spuštíme smazání v samostatném vlákně po 2 sekundách
+                def delete_after_download():
+                    time.sleep(2)  # Počkáme než se soubor stáhne
+                    try:
+                        if file_path.exists():
+                            file_path.unlink()
+                            logger.info(f"Soubor {filename} byl automaticky smazán po stažení")
+                    except Exception as e:
+                        logger.error(f"Chyba při automatickém mazání souboru {filename}: {e}")
+                
+                thread = threading.Thread(target=delete_after_download)
+                thread.daemon = True
+                thread.start()
+            
+            return response
         else:
             return jsonify({'success': False, 'error': 'Soubor nebyl nalezen'})
     except Exception as e:

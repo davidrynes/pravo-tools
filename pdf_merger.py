@@ -21,12 +21,12 @@ def check_dependencies():
         import PIL
         import fitz
         return True
-    except ImportError as e:
+except ImportError as e:
         return False
 
 def install_dependencies():
     """Nainstaluje závislosti"""
-    try:
+        try:
         # Najít requirements.txt
         script_dir = Path(__file__).parent
         requirements_file = script_dir / "requirements.txt"
@@ -41,8 +41,8 @@ def install_dependencies():
                 subprocess.check_call([sys.executable, "-m", "pip", "install", package])
             return True
     except subprocess.CalledProcessError:
-        return False
-
+            return False
+    
 def main():
     """Hlavní funkce"""
     # Zkontrolovat závislosti
@@ -57,7 +57,7 @@ def main():
             "Chcete pokračovat s automatickou instalací?\n\n"
             "Budou nainstalovány: PyPDF2, reportlab, Pillow, PyMuPDF"
         )
-        
+                    
         if result:
             try:
                 messagebox.showinfo("PDF Merger", "Instaluji závislosti...\n\nProsím čekejte.")

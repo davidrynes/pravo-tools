@@ -269,7 +269,7 @@
                             <div class="drag-drop-area" id="dragDropArea">
                                 <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
                                 <h5>Přetáhněte PDF soubory sem nebo klikněte pro výběr</h5>
-                                <p class="text-muted">Podporované formáty: PDF (max 50MB na soubor)</p>
+                                <p class="text-muted">Podporované formáty: PDF | Max: 80 souborů, 200MB celkem</p>
                                 <input type="file" id="fileInput" multiple accept=".pdf" style="display: none;">
                             </div>
                             <div id="uploadStatus" class="mt-3"></div>
@@ -303,17 +303,30 @@
 
                     <!-- Sekce 3: Ruční párování s drag & drop -->
                     <div class="card mb-4">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">
-                                <i class="fas fa-link"></i> 3. Ruční párování souborů
-                            </h5>
-                            <div>
-                                <button class="btn btn-success me-2" onclick="autoPair()" id="autoPairBtn">
-                                    <i class="fas fa-magic"></i> Automatické párování
-                                </button>
-                                <button class="btn btn-outline-primary" onclick="clearPairs()" id="clearPairsBtn">
-                                    <i class="fas fa-trash"></i> Vymazat páry
-                                </button>
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-link"></i> 3. Ruční párování souborů
+                                </h5>
+                                <div class="d-flex align-items-center gap-2">
+                                    <select class="form-select form-select-sm" id="pageCountSelect" style="width: auto;">
+                                        <option value="32">32 stran</option>
+                                        <option value="36">36 stran</option>
+                                        <option value="40" selected>40 stran</option>
+                                        <option value="48">48 stran</option>
+                                        <option value="56">56 stran</option>
+                                    </select>
+                                    <button class="btn btn-success" onclick="autoPair()" id="autoPairBtn">
+                                        <i class="fas fa-magic"></i> Auto-párování
+                                    </button>
+                                    <button class="btn btn-outline-primary" onclick="clearPairs()" id="clearPairsBtn">
+                                        <i class="fas fa-trash"></i> Vymazat
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="alert alert-info alert-sm mt-2 mb-0" style="font-size: 0.85rem;">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Rozsah vydání:</strong> Vyberte počet stran vydání pro správné auto-párování podle klíče (např. 40 = 20 párů: 40-1, 2-39, 38-3...)
                             </div>
                         </div>
                         <div class="card-body">
@@ -368,14 +381,14 @@
                                 <div class="col-md-12">
                                     <div class="alert alert-success">
                                         <i class="fas fa-print"></i>
-                                        <strong>Optimalizováno pro tiskárny novin:</strong>
+                                        <strong>Oboustranný tisk dvojstran (novinový tisk):</strong>
                                         <ul class="mb-0 mt-2">
-                                            <li><strong>Dynamická rotace:</strong> Automaticky podle pořadí stránek</li>
-                                            <li><strong>Pokud liché > sudé:</strong> +90° (doprava)</li>
-                                            <li><strong>Pokud liché < sudé:</strong> -90° (doleva)</li>
+                                            <li><strong>Automatická rotace podle pořadí:</strong> 1. pár = +90° (přední), 2. pár = -90° (zadní), 3. pár = +90° (přední)...</li>
+                                            <li><strong>Liché strany vždy vpravo:</strong> Automatické přehození pokud je potřeba (např. 40-1, 2-39, 38-3...)</li>
+                                            <li><strong>Pevný klíč párování:</strong> Podle vybraného rozsahu (32/36/40/48/56 stran)</li>
                                             <li><strong>Textová editovatelnost:</strong> Zachována pro vyhledávání a kopírování</li>
-                                            <li><strong>Vektorová kvalita:</strong> Zachována pro ostrý tisk</li>
-                                            <li><strong>Velikost souboru:</strong> 3-4 MB (InDesign-like kvalita)</li>
+                                            <li><strong>Vektorová kvalita:</strong> InDesign-like přístup pro ostrý tisk</li>
+                                            <li><strong>Velikost souboru:</strong> 3-4 MB na pár (optimalizováno)</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -696,11 +709,14 @@
         // Automatické párování
         async function autoPair() {
             try {
+                const pageCount = parseInt(document.getElementById('pageCountSelect').value);
+                
                 const response = await fetch('/api/auto-pair', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
-                    }
+                    },
+                    body: JSON.stringify({ page_count: pageCount })
                 });
                 const result = await response.json();
 
@@ -709,12 +725,12 @@
                     displayPairs(currentPairs);
                     displayAvailableFiles(currentFiles);
                     updateStats();
-                    showStatus(`Vytvořeno ${result.count} párů`, 'success');
+                    showStatus(`✅ Vytvořeno ${result.count} párů podle klíče pro ${pageCount} stran`, 'success');
                 } else {
-                    showStatus(`Chyba při párování: ${result.error}`, 'danger');
+                    showStatus(`❌ Chyba při párování: ${result.error}`, 'danger');
                 }
             } catch (error) {
-                showStatus(`Chyba: ${error.message}`, 'danger');
+                showStatus(`❌ Chyba: ${error.message}`, 'danger');
             }
         }
 
@@ -959,7 +975,7 @@
                             </small>
                         </div>
                         <div>
-                            <a href="/api/download/${result.filename}" class="btn btn-success btn-sm">
+                            <a href="/api/download/${result.filename}?auto_delete=true" class="btn btn-success btn-sm" title="Stáhnout (automaticky se smaže po stažení)">
                                 <i class="fas fa-download"></i> Stáhnout
                             </a>
                         </div>
