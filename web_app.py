@@ -138,16 +138,16 @@ class WebPDFMerger:
                 right_file_path = UPLOAD_FOLDER / right_file
                 
                 # OBOUSTRANNÝ TISK DVOJSTRAN:
-                # - 1. pár = PŘEDNÍ strana papíru → +90°
-                # - 2. pár = ZADNÍ strana papíru  → -90°
-                # - 3. pár = PŘEDNÍ strana papíru → +90°
-                # - 4. pár = ZADNÍ strana papíru  → -90°
+                # - 1. pár = PŘEDNÍ strana papíru → -90°
+                # - 2. pár = ZADNÍ strana papíru  → +90°
+                # - 3. pár = PŘEDNÍ strana papíru → -90°
+                # - 4. pár = ZADNÍ strana papíru  → +90°
                 # Rotace závisí na POŘADÍ PÁRU (liché = přední, sudé = zadní)
                 if i % 2 == 1:  # Liché pořadí (1, 3, 5...) = Přední strana
-                    rotation = 90
+                    rotation = -90
                     side = "Přední"
                 else:  # Sudé pořadí (2, 4, 6...) = Zadní strana
-                    rotation = -90
+                    rotation = 90
                     side = "Zadní"
                 
                 logger.info(f"{i}. pár ({left_page}-{right_page}): {side} strana → Rotace {rotation}°")
