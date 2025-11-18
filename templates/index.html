@@ -870,6 +870,8 @@
                 return;
             }
 
+            console.log('🚀 Spouštím merge pro páry:', currentPairs);
+
             // Automatická rotace pro tiskárny - není potřeba uživatelské nastavení
             const rotation = 0; // Nepoužívá se, rotace je automatická
             
@@ -886,15 +888,20 @@
                 });
                 const result = await response.json();
 
+                console.log('📥 Odpověď z /api/merge:', result);
+
                 if (result.success) {
                     currentTaskId = result.task_id;
+                    console.log('✅ Task ID:', currentTaskId);
                     showProgress();
                     monitorTask();
                     showStatus('Zpracování bylo spuštěno', 'info');
                 } else {
+                    console.error('❌ Chyba z API:', result.error);
                     showStatus(`Chyba: ${result.error}`, 'danger');
                 }
             } catch (error) {
+                console.error('❌ Exception:', error);
                 showStatus(`Chyba: ${error.message}`, 'danger');
             }
         }
@@ -913,22 +920,28 @@
                 const response = await fetch(`/api/task/${currentTaskId}`);
                 const result = await response.json();
 
+                console.log('🔄 Status tasku:', result);
+
                 if (result.success) {
                     const task = result.task;
                     updateProgress(task);
                     
                     if (task.status === 'completed') {
+                        console.log('✅ Task dokončen, výsledky:', task.results);
                         displayResults(task.results);
                         hideProgress();
                         showStatus('Zpracování dokončeno!', 'success');
                     } else if (task.status === 'error') {
+                        console.error('❌ Task error:', task.error);
                         hideProgress();
                         showStatus(`Chyba: ${task.error}`, 'danger');
                     } else {
+                        console.log('⏳ Task pokračuje...');
                         setTimeout(monitorTask, 1000);
                     }
                 }
             } catch (error) {
+                console.error('❌ Exception při monitorování:', error);
                 hideProgress();
                 showStatus(`Chyba při sledování úlohy: ${error.message}`, 'danger');
             }
@@ -951,17 +964,31 @@
 
         // Zobrazení výsledků
         function displayResults(results) {
+            console.log('📊 Zobrazuji výsledky:', results);
             const resultsList = document.getElementById('resultsList');
             
-            if (results.success.length === 0) {
-                resultsList.innerHTML = `
-                    <div class="text-center text-muted">
-                        <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                        <p>Žádné soubory nebyly vytvořeny</p>
-                    </div>
-                `;
+            if (!results || !results.success || results.success.length === 0) {
+                console.error('❌ Žádné úspěšné soubory:', results);
+                
+                // Zobrazíme i případné chyby
+                let errorMsg = '<div class="text-center text-muted"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i>';
+                errorMsg += '<p>Žádné soubory nebyly vytvořeny</p>';
+                
+                if (results && results.errors && results.errors.length > 0) {
+                    errorMsg += '<div class="alert alert-danger mt-3 text-start">';
+                    errorMsg += '<strong>Chyby:</strong><ul class="mb-0">';
+                    results.errors.forEach(err => {
+                        errorMsg += `<li>${err}</li>`;
+                    });
+                    errorMsg += '</ul></div>';
+                }
+                
+                errorMsg += '</div>';
+                resultsList.innerHTML = errorMsg;
                 return;
             }
+            
+            console.log(`✅ Zobrazuji ${results.success.length} úspěšných souborů`);
 
             resultsList.innerHTML = results.success.map(result => `
                 <div class="result-item">
