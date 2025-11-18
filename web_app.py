@@ -152,28 +152,56 @@ class WebPDFMerger:
                 
                 logger.info(f"{i}. pár ({left_page}-{right_page}): {side} strana → Rotace {rotation}°")
                 
-                success = self.merger.create_side_by_side_pdf_with_rotation(
-                    left_file_path, right_file_path, output_path, rotation
-                )
+                # Kontrola existence souborů
+                if not left_file_path.exists():
+                    error_msg = f"Levý soubor neexistuje: {left_file}"
+                    logger.error(error_msg)
+                    results['errors'].append(error_msg)
+                    continue
+                    
+                if not right_file_path.exists():
+                    error_msg = f"Pravý soubor neexistuje: {right_file}"
+                    logger.error(error_msg)
+                    results['errors'].append(error_msg)
+                    continue
                 
-                if success:
-                    file_size = output_path.stat().st_size / (1024 * 1024)  # MB
-                    results['success'].append({
-                        'filename': output_name,
-                        'size_mb': round(file_size, 1),
-                        'left_file': Path(left_file).name,
-                        'right_file': Path(right_file).name,
-                        'left_page': left_page,
-                        'right_page': right_page,
-                        'rotation': rotation,
-                        'pair_index': i
-                    })
-                else:
-                    results['errors'].append(f"Chyba při spojování {left_file} + {right_file}")
+                # Pokus o merge s detailním logováním
+                try:
+                    success = self.merger.create_side_by_side_pdf_with_rotation(
+                        left_file_path, right_file_path, output_path, rotation
+                    )
+                    
+                    if success:
+                        if output_path.exists():
+                            file_size = output_path.stat().st_size / (1024 * 1024)  # MB
+                            results['success'].append({
+                                'filename': output_name,
+                                'size_mb': round(file_size, 1),
+                                'left_file': Path(left_file).name,
+                                'right_file': Path(right_file).name,
+                                'left_page': left_page,
+                                'right_page': right_page,
+                                'rotation': rotation,
+                                'pair_index': i
+                            })
+                            logger.info(f"✅ Pár {i} úspěšně sloučen: {output_name}")
+                        else:
+                            error_msg = f"Merge vrátil success, ale soubor neexistuje: {output_name}"
+                            logger.error(error_msg)
+                            results['errors'].append(error_msg)
+                    else:
+                        error_msg = f"Merge selhal (returned False): {left_file} + {right_file}"
+                        logger.error(error_msg)
+                        results['errors'].append(error_msg)
+                except Exception as merge_error:
+                    error_msg = f"Exception při merge {left_file} + {right_file}: {str(merge_error)}"
+                    logger.error(error_msg)
+                    results['errors'].append(error_msg)
                     
             except Exception as e:
-                results['errors'].append(f"Chyba při zpracování páru {i}: {str(e)}")
-                logger.error(f"Chyba při zpracování páru {i}: {e}")
+                error_msg = f"Chyba při zpracování páru {i} ({left_page}-{right_page}): {str(e)}"
+                results['errors'].append(error_msg)
+                logger.error(error_msg)
         
         return results
 
