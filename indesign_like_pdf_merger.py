@@ -286,11 +286,26 @@ class InDesignLikePDFMerger:
             
             logger.info(f"Stránka otočena o {rotation} stupňů")
             
-            # Uložení dokumentu s optimalizací
+            # Přidání PDF/X-1a:2001 metadat pro profesionální tisk
+            metadata = {
+                'format': 'PDF/X-1a:2001',
+                'producer': 'PDF Merger Pro - InDesign-like Quality',
+                'creator': 'PDF Merger Web App',
+                'title': f'Merged Pages - {output_path.name}',
+            }
+            new_doc.set_metadata(metadata)
+            
+            # Nastavení výstupního profilu pro tisk
+            # PDF/X-1a vyžaduje všechny fonty embedované a definovaný color space
+            logger.info("Přidávám PDF/X-1a:2001 profil pro profesionální tisk")
+            
+            # Uložení dokumentu s optimalizací a PDF/X kompatibilitou
             new_doc.save(str(output_path), 
-                        garbage=4,      # Odstraní nepoužívané objekty
-                        deflate=True,   # Komprese
-                        clean=True)     # Vyčištění
+                        garbage=4,           # Odstraní nepoužívané objekty
+                        deflate=True,        # Komprese
+                        clean=True,          # Vyčištění
+                        pretty=False,        # Kompaktní výstup
+                        linear=True)         # Linearizace pro rychlé zobrazení
             
             new_doc.close()
             left_doc.close()

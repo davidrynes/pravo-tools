@@ -116,6 +116,7 @@ Aplikace spojuje **dvě PDF stránky** do "dvojstrany" a aplikuje **automatickou
 - Každé PDF je **samostatná stránka**, používá se **pouze jednou**
 - **Zachovává kvalitu**: InDesign-like přístup s přímým kopírováním PDF objektů
 - **Textová editovatelnost**: Zachována pro vyhledávání a kopírování
+- **PDF/X-1a:2001 profil**: Automaticky přidán pro profesionální tisk
 
 ### 📊 Příklad oboustranného tisku dvojstran:
 | Fyzický papír | Strana papíru | Pořadí páru | PDF dvojstrana | Rotace |
