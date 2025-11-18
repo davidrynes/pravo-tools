@@ -293,14 +293,35 @@ class InDesignLikePDFMerger:
             
             # Přidání PDF/X-1a:2001 metadat pro profesionální tisk
             try:
+                # Standardní metadata
                 metadata = {
-                    'format': 'PDF/X-1a:2001',
                     'producer': 'PDF Merger Pro - InDesign-like Quality',
                     'creator': 'PDF Merger Web App',
                     'title': f'Merged Pages - {output_path.name}',
                 }
                 new_doc.set_metadata(metadata)
-                logger.info("  ✅ PDF/X-1a:2001 metadata přidána")
+                
+                # PDF/X-1a:2001 vyžaduje XMP metadata s GTS properties
+                # Vytvoříme XMP packet s PDF/X-1a:2001 informacemi
+                xmp_metadata = '''<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    <rdf:Description rdf:about=""
+        xmlns:pdfxid="http://www.npes.org/pdfx/ns/id/">
+      <pdfxid:GTS_PDFXVersion>PDF/X-1:2001</pdfxid:GTS_PDFXVersion>
+    </rdf:Description>
+    <rdf:Description rdf:about=""
+        xmlns:pdfx="http://ns.adobe.com/pdfx/1.3/">
+      <pdfx:GTS_PDFXConformance>PDF/X-1a:2001</pdfx:GTS_PDFXConformance>
+    </rdf:Description>
+  </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>'''
+                
+                # Přidání XMP metadat do dokumentu
+                new_doc.set_xml_metadata(xmp_metadata)
+                
+                logger.info("  ✅ PDF/X-1a:2001 XMP metadata přidána (GTS_PDFXConformance + GTS_PDFXVersion)")
             except Exception as meta_error:
                 logger.warning(f"  ⚠️  Nepodařilo se přidat PDF/X metadata: {meta_error}")
                 # Pokračujeme i bez metadat
