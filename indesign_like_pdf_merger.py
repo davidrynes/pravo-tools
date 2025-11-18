@@ -311,9 +311,8 @@ class InDesignLikePDFMerger:
                 new_doc.save(str(output_path), 
                             garbage=4,           # Odstraní nepoužívané objekty
                             deflate=True,        # Komprese
-                            clean=True,          # Vyčištění
-                            pretty=False,        # Kompaktní výstup
-                            linear=True)         # Linearizace pro rychlé zobrazení
+                            clean=True)          # Vyčištění
+                            # linear=True je deprecated v novějších verzích PyMuPDF
                 logger.info(f"  ✅ Soubor uložen")
             except Exception as save_error:
                 logger.error(f"  ❌ Chyba při ukládání: {save_error}")
