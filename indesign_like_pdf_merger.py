@@ -301,9 +301,17 @@ class InDesignLikePDFMerger:
                 }
                 new_doc.set_metadata(metadata)
                 
-                # PDF/X-1a:2001 vyžaduje XMP metadata s GTS properties
-                # Vytvoříme XMP packet s PDF/X-1a:2001 informacemi
-                xmp_metadata = '''<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+                # Zkusíme zkopírovat XMP z původního InDesign PDF (pokud existuje)
+                # InDesign PDF už obsahují PDF/X-1a:2001 properties a OutputIntent
+                source_xmp = left_doc.get_xml_metadata()
+                
+                if source_xmp and ('PDF/X' in source_xmp or 'GTS' in source_xmp):
+                    # Původní PDF má PDF/X metadata - zkopírujeme je
+                    new_doc.set_xml_metadata(source_xmp)
+                    logger.info("  ✅ PDF/X-1a:2001 XMP zkopírována z původního InDesign PDF")
+                else:
+                    # Vytvoříme nové PDF/X-1a:2001 XMP metadata
+                    xmp_metadata = '''<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
 <x:xmpmeta xmlns:x="adobe:ns:meta/">
   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
     <rdf:Description rdf:about=""
@@ -317,11 +325,9 @@ class InDesignLikePDFMerger:
   </rdf:RDF>
 </x:xmpmeta>
 <?xpacket end="w"?>'''
-                
-                # Přidání XMP metadat do dokumentu
-                new_doc.set_xml_metadata(xmp_metadata)
-                
-                logger.info("  ✅ PDF/X-1a:2001 XMP metadata přidána (GTS_PDFXConformance + GTS_PDFXVersion)")
+                    new_doc.set_xml_metadata(xmp_metadata)
+                    logger.info("  ✅ PDF/X-1a:2001 XMP metadata přidána")
+                    
             except Exception as meta_error:
                 logger.warning(f"  ⚠️  Nepodařilo se přidat PDF/X metadata: {meta_error}")
                 # Pokračujeme i bez metadat
