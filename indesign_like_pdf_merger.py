@@ -241,12 +241,17 @@ class InDesignLikePDFMerger:
             rotation: Rotace stránky (-90 nebo +90 stupňů)
         """
         try:
+            logger.info(f"🔄 Začínám merge: {left_pdf.name} + {right_pdf.name}")
+            
             # Načtení PDF souborů pomocí PyMuPDF
             left_doc = fitz.open(str(left_pdf))
             right_doc = fitz.open(str(right_pdf))
             
+            logger.info(f"  📖 Levý PDF: {len(left_doc)} stránek")
+            logger.info(f"  📖 Pravý PDF: {len(right_doc)} stránek")
+            
             if len(left_doc) == 0 or len(right_doc) == 0:
-                logger.error("Jeden nebo oba PDF soubory jsou prázdné")
+                logger.error("❌ Jeden nebo oba PDF soubory jsou prázdné")
                 return False
             
             # Získání stránek
@@ -284,38 +289,56 @@ class InDesignLikePDFMerger:
             # Aplikace dynamické rotace na celou stránku
             new_page.set_rotation(rotation)
             
-            logger.info(f"Stránka otočena o {rotation} stupňů")
+            logger.info(f"  🔄 Stránka otočena o {rotation} stupňů")
             
             # Přidání PDF/X-1a:2001 metadat pro profesionální tisk
-            metadata = {
-                'format': 'PDF/X-1a:2001',
-                'producer': 'PDF Merger Pro - InDesign-like Quality',
-                'creator': 'PDF Merger Web App',
-                'title': f'Merged Pages - {output_path.name}',
-            }
-            new_doc.set_metadata(metadata)
+            try:
+                metadata = {
+                    'format': 'PDF/X-1a:2001',
+                    'producer': 'PDF Merger Pro - InDesign-like Quality',
+                    'creator': 'PDF Merger Web App',
+                    'title': f'Merged Pages - {output_path.name}',
+                }
+                new_doc.set_metadata(metadata)
+                logger.info("  ✅ PDF/X-1a:2001 metadata přidána")
+            except Exception as meta_error:
+                logger.warning(f"  ⚠️  Nepodařilo se přidat PDF/X metadata: {meta_error}")
+                # Pokračujeme i bez metadat
             
-            # Nastavení výstupního profilu pro tisk
-            # PDF/X-1a vyžaduje všechny fonty embedované a definovaný color space
-            logger.info("Přidávám PDF/X-1a:2001 profil pro profesionální tisk")
-            
-            # Uložení dokumentu s optimalizací a PDF/X kompatibilitou
-            new_doc.save(str(output_path), 
-                        garbage=4,           # Odstraní nepoužívané objekty
-                        deflate=True,        # Komprese
-                        clean=True,          # Vyčištění
-                        pretty=False,        # Kompaktní výstup
-                        linear=True)         # Linearizace pro rychlé zobrazení
+            # Uložení dokumentu s optimalizací
+            logger.info(f"  💾 Ukládám do: {output_path}")
+            try:
+                new_doc.save(str(output_path), 
+                            garbage=4,           # Odstraní nepoužívané objekty
+                            deflate=True,        # Komprese
+                            clean=True,          # Vyčištění
+                            pretty=False,        # Kompaktní výstup
+                            linear=True)         # Linearizace pro rychlé zobrazení
+                logger.info(f"  ✅ Soubor uložen")
+            except Exception as save_error:
+                logger.error(f"  ❌ Chyba při ukládání: {save_error}")
+                new_doc.close()
+                left_doc.close()
+                right_doc.close()
+                return False
             
             new_doc.close()
             left_doc.close()
             right_doc.close()
             
-            logger.info(f"InDesign-like PDF s dynamickou rotací úspěšně vytvořeno: {output_path}")
-            return True
+            # Ověření že soubor existuje
+            if output_path.exists():
+                file_size = output_path.stat().st_size / (1024 * 1024)
+                logger.info(f"✅ Merge úspěšný: {output_path.name} ({file_size:.2f} MB)")
+                return True
+            else:
+                logger.error(f"❌ Soubor nebyl vytvořen: {output_path}")
+                return False
             
         except Exception as e:
-            logger.error(f"Chyba při vytváření InDesign-like PDF s dynamickou rotací: {e}")
+            logger.error(f"❌ EXCEPTION při merge: {type(e).__name__}: {str(e)}")
+            import traceback
+            logger.error(f"  Traceback: {traceback.format_exc()}")
             return False
     
     def create_side_by_side_pdf_pypdf2(self, left_pdf: Path, right_pdf: Path, output_path: Path, 
