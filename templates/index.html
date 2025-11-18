@@ -970,13 +970,21 @@
             if (!results || !results.success || results.success.length === 0) {
                 console.error('❌ Žádné úspěšné soubory:', results);
                 
-                // Zobrazíme i případné chyby
+                // DETAILNÍ LOG CHYB
+                if (results && results.errors && results.errors.length > 0) {
+                    console.error('🔴 CHYBY PRI MERGE:');
+                    results.errors.forEach((err, index) => {
+                        console.error(`  ${index + 1}. ${err}`);
+                    });
+                }
+                
+                // Zobrazíme i případné chyby v UI
                 let errorMsg = '<div class="text-center text-muted"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i>';
                 errorMsg += '<p>Žádné soubory nebyly vytvořeny</p>';
                 
                 if (results && results.errors && results.errors.length > 0) {
                     errorMsg += '<div class="alert alert-danger mt-3 text-start">';
-                    errorMsg += '<strong>Chyby:</strong><ul class="mb-0">';
+                    errorMsg += '<strong>Chyby při merge:</strong><ul class="mb-0 mt-2" style="max-height: 300px; overflow-y: auto;">';
                     results.errors.forEach(err => {
                         errorMsg += `<li>${err}</li>`;
                     });
