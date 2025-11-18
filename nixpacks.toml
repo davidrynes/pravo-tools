@@ -1,0 +1,9 @@
+[phases.setup]
+nixPkgs = ["ghostscript"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+cmd = "python web_app.py"
+
