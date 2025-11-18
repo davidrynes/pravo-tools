@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Tuple, Optional
 import logging
 import math
+import subprocess
+import shutil
 
 try:
     from PyPDF2 import PdfReader, PdfWriter
@@ -43,6 +45,7 @@ class InDesignLikePDFMerger:
         self.files_dir = Path(files_dir)
         self.output_dir = Path("output")
         self.output_dir.mkdir(exist_ok=True)
+        self.ghostscript_path = self._find_ghostscript()
         
     def get_pdf_files(self) -> list:
         """Získá seznam všech PDF souborů ve složce files"""
@@ -353,13 +356,20 @@ class InDesignLikePDFMerger:
             right_doc.close()
             
             # Ověření že soubor existuje
-            if output_path.exists():
-                file_size = output_path.stat().st_size / (1024 * 1024)
-                logger.info(f"✅ Merge úspěšný: {output_path.name} ({file_size:.2f} MB)")
-                return True
-            else:
+            if not output_path.exists():
                 logger.error(f"❌ Soubor nebyl vytvořen: {output_path}")
                 return False
+            
+            file_size = output_path.stat().st_size / (1024 * 1024)
+            logger.info(f"✅ Merge úspěšný: {output_path.name} ({file_size:.2f} MB)")
+            
+            # Post-processing: Konverze na PDF/X-1a:2001 pomocí Ghostscript (pokud je dostupný)
+            if self._convert_to_pdfx_with_ghostscript(output_path):
+                logger.info(f"✅ PDF konvertováno na PDF/X-1a:2001 pomocí Ghostscript")
+            else:
+                logger.info(f"ℹ️  Ghostscript není dostupný, PDF má XMP metadata ale není plně PDF/X-1a validní")
+            
+            return True
             
         except Exception as e:
             logger.error(f"❌ EXCEPTION při merge: {type(e).__name__}: {str(e)}")
@@ -520,6 +530,82 @@ class InDesignLikePDFMerger:
                     logger.warning(f"Nenalezena pravá stránka pro stránku {page_num}")
         
         return merged_files
+    
+    def _find_ghostscript(self) -> Optional[str]:
+        """Najde cestu k Ghostscript executable"""
+        # Možné názvy ghostscript
+        gs_names = ['gs', 'gswin64c', 'gswin32c']
+        
+        for gs_name in gs_names:
+            gs_path = shutil.which(gs_name)
+            if gs_path:
+                logger.info(f"Ghostscript nalezen: {gs_path}")
+                return gs_path
+        
+        return None
+    
+    def _convert_to_pdfx_with_ghostscript(self, pdf_path: Path) -> bool:
+        """
+        Konvertuje PDF na PDF/X-1a:2001 pomocí Ghostscript
+        
+        Args:
+            pdf_path: Cesta k PDF souboru
+            
+        Returns:
+            True pokud konverze uspěla, False jinak
+        """
+        if not self.ghostscript_path:
+            return False
+        
+        try:
+            # Vytvoříme temporary soubor pro output
+            temp_output = pdf_path.parent / f"{pdf_path.stem}_temp_pdfx.pdf"
+            
+            # Ghostscript příkaz pro konverzi na PDF/X-1a:2001
+            gs_command = [
+                self.ghostscript_path,
+                '-dPDFX',
+                '-dBATCH',
+                '-dNOPAUSE',
+                '-dSAFER',
+                '-sDEVICE=pdfwrite',
+                '-dCompatibilityLevel=1.3',
+                '-dPDFSETTINGS=/prepress',
+                '-dPDFX=1',
+                '-sProcessColorModel=DeviceCMYK',
+                '-sColorConversionStrategy=CMYK',
+                f'-sOutputFile={temp_output}',
+                str(pdf_path)
+            ]
+            
+            logger.info(f"  🔄 Spouštím Ghostscript konverzi na PDF/X-1a:2001...")
+            
+            # Spustíme Ghostscript
+            result = subprocess.run(
+                gs_command,
+                capture_output=True,
+                text=True,
+                timeout=60  # Max 60 sekund
+            )
+            
+            if result.returncode == 0 and temp_output.exists():
+                # Úspěch - přemístíme temporary soubor zpět
+                temp_output.replace(pdf_path)
+                logger.info(f"  ✅ Ghostscript konverze úspěšná")
+                return True
+            else:
+                logger.warning(f"  ⚠️  Ghostscript konverze selhala: {result.stderr[:200]}")
+                # Smažeme temporary soubor pokud existuje
+                if temp_output.exists():
+                    temp_output.unlink()
+                return False
+                
+        except subprocess.TimeoutExpired:
+            logger.warning(f"  ⚠️  Ghostscript konverze timeout (>60s)")
+            return False
+        except Exception as e:
+            logger.warning(f"  ⚠️  Chyba při Ghostscript konverzi: {e}")
+            return False
 
 
 def main():
