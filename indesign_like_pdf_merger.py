@@ -289,6 +289,16 @@ class InDesignLikePDFMerger:
             right_clip = fitz.Rect(left_rect.width, 0, new_width, right_rect.height)
             new_page.show_pdf_page(right_clip, right_doc, 0)
             
+            # Nastavení TrimBox pro PDF/X-1a:2001 PŘED rotací
+            # TrimBox = ořezový rámeček (pro tiskárnu)
+            # Pro PDF/X-1a musí být buď TrimBox NEBO ArtBox (ne oba!)
+            page_rect = new_page.rect
+            try:
+                new_page.set_trimbox(page_rect)
+                logger.info(f"  ✅ TrimBox nastaven")
+            except Exception as box_error:
+                logger.warning(f"  ⚠️  TrimBox error: {box_error}")
+            
             # Aplikace dynamické rotace na celou stránku
             new_page.set_rotation(rotation)
             
@@ -296,40 +306,112 @@ class InDesignLikePDFMerger:
             
             # Přidání PDF/X-1a:2001 metadat pro profesionální tisk
             try:
-                # Standardní metadata
+                # Standardní metadata včetně CreationDate a ModDate
+                from datetime import datetime
+                now = datetime.now().strftime("D:%Y%m%d%H%M%S+00'00'")
+                
                 metadata = {
                     'producer': 'PDF Merger Pro - InDesign-like Quality',
                     'creator': 'PDF Merger Web App',
                     'title': f'Merged Pages - {output_path.name}',
+                    'creationDate': now,
+                    'modDate': now,
                 }
                 new_doc.set_metadata(metadata)
                 
-                # Zkusíme zkopírovat XMP z původního InDesign PDF (pokud existuje)
-                # InDesign PDF už obsahují PDF/X-1a:2001 properties a OutputIntent
-                source_xmp = left_doc.get_xml_metadata()
+                # Trapped key musí být nastaven speciálně (jako /False, ne string "False")
+                # PyMuPDF to neumí přímo, takže přidáme do XMP
                 
-                if source_xmp and ('PDF/X' in source_xmp or 'GTS' in source_xmp):
-                    # Původní PDF má PDF/X metadata - zkopírujeme je
-                    new_doc.set_xml_metadata(source_xmp)
-                    logger.info("  ✅ PDF/X-1a:2001 XMP zkopírována z původního InDesign PDF")
-                else:
-                    # Vytvoříme nové PDF/X-1a:2001 XMP metadata
-                    xmp_metadata = '''<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+                # Vytvoříme kompletní PDF/X-1a:2001 XMP metadata
+                # Včetně GTS_PDFXVersion, Trapped, OutputIntent info
+                xmp_metadata = f'''<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
 <x:xmpmeta xmlns:x="adobe:ns:meta/">
   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
     <rdf:Description rdf:about=""
+        xmlns:pdf="http://ns.adobe.com/pdf/1.3/">
+      <pdf:Trapped>False</pdf:Trapped>
+    </rdf:Description>
+    <rdf:Description rdf:about=""
         xmlns:pdfxid="http://www.npes.org/pdfx/ns/id/">
-      <pdfxid:GTS_PDFXVersion>PDF/X-1:2001</pdfxid:GTS_PDFXVersion>
+      <pdfxid:GTS_PDFXVersion>PDF/X-1a:2001</pdfxid:GTS_PDFXVersion>
     </rdf:Description>
     <rdf:Description rdf:about=""
         xmlns:pdfx="http://ns.adobe.com/pdfx/1.3/">
       <pdfx:GTS_PDFXConformance>PDF/X-1a:2001</pdfx:GTS_PDFXConformance>
     </rdf:Description>
+    <rdf:Description rdf:about=""
+        xmlns:dc="http://purl.org/dc/elements/1.1/">
+      <dc:title>
+        <rdf:Alt>
+          <rdf:li xml:lang="x-default">Merged Pages - {output_path.name}</rdf:li>
+        </rdf:Alt>
+      </dc:title>
+      <dc:creator>
+        <rdf:Seq>
+          <rdf:li>PDF Merger Web App</rdf:li>
+        </rdf:Seq>
+      </dc:creator>
+    </rdf:Description>
+    <rdf:Description rdf:about=""
+        xmlns:xmp="http://ns.adobe.com/xap/1.0/">
+      <xmp:CreateDate>{now}</xmp:CreateDate>
+      <xmp:ModifyDate>{now}</xmp:ModifyDate>
+      <xmp:CreatorTool>PDF Merger Pro - InDesign-like Quality</xmp:CreatorTool>
+    </rdf:Description>
   </rdf:RDF>
 </x:xmpmeta>
 <?xpacket end="w"?>'''
-                    new_doc.set_xml_metadata(xmp_metadata)
-                    logger.info("  ✅ PDF/X-1a:2001 XMP metadata přidána")
+                new_doc.set_xml_metadata(xmp_metadata)
+                logger.info("  ✅ PDF/X-1a:2001 XMP metadata přidána")
+                
+                # Jednodušší přístup: Přidáme OutputIntent manuálně jako text
+                # (bez kopírování ICC profilu - tiskárna použije standardní FOGRA39)
+                try:
+                    catalog_xref = new_doc.pdf_catalog()
+                    
+                    # Vytvoříme OutputIntent objekt (bez embedovaného ICC profilu)
+                    # Použijeme OutputConditionIdentifier který tiskárna zná
+                    new_oi_xref = new_doc.get_new_xref()
+                    output_intent = '''<<
+/Type /OutputIntent
+/S /GTS_PDFX
+/OutputConditionIdentifier (FOGRA39)
+/RegistryName (http://www.color.org)
+/Info (ISO Coated v2 300% (ECI))
+>>'''
+                    new_doc.update_object(new_oi_xref, output_intent)
+                    
+                    # Přidáme OutputIntents do catalog
+                    new_doc.xref_set_key(catalog_xref, 'OutputIntents', f'[{new_oi_xref} 0 R]')
+                    
+                    logger.info("  ✅ OutputIntent přidán (FOGRA39 - bez ICC embed)")
+                    
+                except Exception as oi_error:
+                    logger.warning(f"  ⚠️  OutputIntent error: {oi_error}")
+                
+                # Přidání GTS_PDFXVersion a Trapped do Info Dictionary
+                # (Acrobat Preflight je tam hledá!)
+                try:
+                    import re
+                    trailer_str = new_doc.pdf_trailer()
+                    
+                    # Najdeme Info xref z trailer
+                    info_match = re.search(r'/Info\s+(\d+)\s+0\s+R', trailer_str)
+                    
+                    if info_match:
+                        info_xref = int(info_match.group(1))
+                        
+                        # Přidáme GTS_PDFXVersion a Trapped
+                        # DŮLEŽITÉ: PDF/X-1a:2001 (s "a"!) pro Acrobat Preflight
+                        new_doc.xref_set_key(info_xref, 'GTS_PDFXVersion', '(PDF/X-1a:2001)')
+                        new_doc.xref_set_key(info_xref, 'Trapped', '/False')
+                        
+                        logger.info("  ✅ GTS_PDFXVersion a Trapped přidány do Info Dictionary")
+                    else:
+                        logger.warning("  ⚠️  Info Dictionary nenalezen v trailer")
+                        
+                except Exception as info_error:
+                    logger.warning(f"  ⚠️  Info Dictionary error: {info_error}")
                     
             except Exception as meta_error:
                 logger.warning(f"  ⚠️  Nepodařilo se přidat PDF/X metadata: {meta_error}")
@@ -363,11 +445,12 @@ class InDesignLikePDFMerger:
             file_size = output_path.stat().st_size / (1024 * 1024)
             logger.info(f"✅ Merge úspěšný: {output_path.name} ({file_size:.2f} MB)")
             
-            # Post-processing: Konverze na PDF/X-1a:2001 pomocí Ghostscript (pokud je dostupný)
-            if self._convert_to_pdfx_with_ghostscript(output_path):
-                logger.info(f"✅ PDF konvertováno na PDF/X-1a:2001 pomocí Ghostscript")
-            else:
-                logger.info(f"ℹ️  Ghostscript není dostupný, PDF má XMP metadata ale není plně PDF/X-1a validní")
+            # Post-processing: Konverze na PDF/X-1a:2001 pomocí Ghostscript
+            # VYPNUTO - Ghostscript kazí naše metadata!
+            # if self._convert_to_pdfx_with_ghostscript(output_path):
+            #     logger.info(f"✅ PDF konvertováno na PDF/X-1a:2001 pomocí Ghostscript")
+            # else:
+            #     logger.info(f"ℹ️  Ghostscript není dostupný, PDF má XMP metadata ale není plně PDF/X-1a validní")
             
             return True
             
@@ -561,19 +644,23 @@ class InDesignLikePDFMerger:
             # Vytvoříme temporary soubor pro output
             temp_output = pdf_path.parent / f"{pdf_path.stem}_temp_pdfx.pdf"
             
-            # Ghostscript příkaz pro konverzi na PDF/X-1a:2001
+            # Ghostscript příkaz - jednodušší přístup BEZ PDFX_def.ps
+            # Pouze přidáme PDF/X-1a značky do metadata
             gs_command = [
                 self.ghostscript_path,
-                '-dPDFX',
                 '-dBATCH',
                 '-dNOPAUSE',
                 '-dSAFER',
                 '-sDEVICE=pdfwrite',
                 '-dCompatibilityLevel=1.3',
                 '-dPDFSETTINGS=/prepress',
-                '-dPDFX=1',
-                '-sProcessColorModel=DeviceCMYK',
-                '-sColorConversionStrategy=CMYK',
+                '-sColorConversionStrategy=LeaveColorUnchanged',  # Necháme CMYK
+                '-dEmbedAllFonts=true',
+                '-dSubsetFonts=false',
+                '-dAutoFilterColorImages=false',
+                '-dAutoFilterGrayImages=false',
+                '-dColorImageFilter=/FlateEncode',
+                '-dGrayImageFilter=/FlateEncode',
                 f'-sOutputFile={temp_output}',
                 str(pdf_path)
             ]
@@ -594,7 +681,11 @@ class InDesignLikePDFMerger:
                 logger.info(f"  ✅ Ghostscript konverze úspěšná")
                 return True
             else:
-                logger.warning(f"  ⚠️  Ghostscript konverze selhala: {result.stderr[:200]}")
+                logger.warning(f"  ⚠️  Ghostscript konverze selhala (exit {result.returncode}):")
+                if result.stderr:
+                    logger.warning(f"  STDERR: {result.stderr}")
+                if result.stdout:
+                    logger.warning(f"  STDOUT: {result.stdout}")
                 # Smažeme temporary soubor pokud existuje
                 if temp_output.exists():
                     temp_output.unlink()
