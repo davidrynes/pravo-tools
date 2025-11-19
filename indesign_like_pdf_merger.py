@@ -364,28 +364,57 @@ class InDesignLikePDFMerger:
                 new_doc.set_xml_metadata(xmp_metadata)
                 logger.info("  ✅ PDF/X-1a:2001 XMP metadata přidána")
                 
-                # Jednodušší přístup: Přidáme OutputIntent manuálně jako text
-                # (bez kopírování ICC profilu - tiskárna použije standardní FOGRA39)
+                # OutputIntent pro PDF/X-1a:2001 s embedovaným ICC profilem
                 try:
-                    catalog_xref = new_doc.pdf_catalog()
+                    icc_profile_path = Path('icc_profiles/newspaper.icc')
                     
-                    # Vytvoříme OutputIntent objekt (bez embedovaného ICC profilu)
-                    # Použijeme OutputConditionIdentifier který tiskárna zná
-                    new_oi_xref = new_doc.get_new_xref()
-                    output_intent = '''<<
+                    if icc_profile_path.exists():
+                        # Načteme ICC profil
+                        with open(icc_profile_path, 'rb') as icc_file:
+                            icc_data = icc_file.read()
+                        
+                        # Vytvoříme ICC stream object s /N parametrem
+                        icc_xref = new_doc.get_new_xref()
+                        
+                        # Vytvoříme stream s parametry
+                        icc_stream_dict = f'''<<
+/N 4
+/Length {len(icc_data)}
+/Filter /FlateDecode
+>>'''
+                        new_doc.update_object(icc_xref, icc_stream_dict)
+                        new_doc.update_stream(icc_xref, icc_data, compress=True)
+                        
+                        # Vytvoříme OutputIntent s odkazem na ICC profil
+                        catalog_xref = new_doc.pdf_catalog()
+                        new_oi_xref = new_doc.get_new_xref()
+                        output_intent = f'''<<
 /Type /OutputIntent
 /S /GTS_PDFX
-/OutputConditionIdentifier (FOGRA39)
+/OutputConditionIdentifier (CGATS TR 001)
 /RegistryName (http://www.color.org)
-/Info (ISO Coated v2 300% (ECI))
+/Info (ISOnewspaper26v4)
+/DestOutputProfile {icc_xref} 0 R
 >>'''
-                    new_doc.update_object(new_oi_xref, output_intent)
-                    
-                    # Přidáme OutputIntents do catalog
-                    new_doc.xref_set_key(catalog_xref, 'OutputIntents', f'[{new_oi_xref} 0 R]')
-                    
-                    logger.info("  ✅ OutputIntent přidán (FOGRA39 - bez ICC embed)")
-                    
+                        new_doc.update_object(new_oi_xref, output_intent)
+                        new_doc.xref_set_key(catalog_xref, 'OutputIntents', f'[{new_oi_xref} 0 R]')
+                        
+                        logger.info(f"  ✅ OutputIntent + ICC profil embedován ({len(icc_data)} bytes)")
+                    else:
+                        # Fallback bez ICC profilu
+                        catalog_xref = new_doc.pdf_catalog()
+                        new_oi_xref = new_doc.get_new_xref()
+                        output_intent = '''<<
+/Type /OutputIntent
+/S /GTS_PDFX
+/OutputConditionIdentifier (CGATS TR 001)
+/RegistryName (http://www.color.org)
+/Info (ISOnewspaper26v4)
+>>'''
+                        new_doc.update_object(new_oi_xref, output_intent)
+                        new_doc.xref_set_key(catalog_xref, 'OutputIntents', f'[{new_oi_xref} 0 R]')
+                        logger.info("  ✅ OutputIntent přidán (bez ICC profilu)")
+                        
                 except Exception as oi_error:
                     logger.warning(f"  ⚠️  OutputIntent error: {oi_error}")
                 
@@ -417,14 +446,13 @@ class InDesignLikePDFMerger:
                 logger.warning(f"  ⚠️  Nepodařilo se přidat PDF/X metadata: {meta_error}")
                 # Pokračujeme i bez metadat
             
-            # Uložení dokumentu s optimalizací
+            # Uložení dokumentu s optimalizací (barvy jsou nyní zachovány díky content copy)
             logger.info(f"  💾 Ukládám do: {output_path}")
             try:
                 new_doc.save(str(output_path), 
                             garbage=4,           # Odstraní nepoužívané objekty
                             deflate=True,        # Komprese
                             clean=True)          # Vyčištění
-                            # linear=True je deprecated v novějších verzích PyMuPDF
                 logger.info(f"  ✅ Soubor uložen")
             except Exception as save_error:
                 logger.error(f"  ❌ Chyba při ukládání: {save_error}")
