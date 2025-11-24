@@ -10,8 +10,10 @@ import os
 import sys
 import json
 import logging
+import zipfile
+import io
 from pathlib import Path
-from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, Response
 from werkzeug.utils import secure_filename
 import threading
 import time
@@ -106,12 +108,24 @@ class WebPDFMerger:
         pdf_files.sort()
         return pdf_files
     
-    def merge_files(self, file_pairs: list, rotation: int = -90) -> dict:
-        """Spojí páry PDF souborů"""
+    def merge_files(self, file_pairs: list, day: str = "01", mutations: list = None, edition: str = "1") -> dict:
+        """
+        Spojí páry PDF souborů s jmennou konvencí pro tiskárnu.
+        
+        Jmenná konvence: 28PXE011.x.pdf
+        - 28 = den vydání
+        - PXE = kód mutace
+        - 01 = číslo páru stran (nižší číslo ze dvojice)
+        - 1 = číslo vydání
+        - .x = CMYK (konstantní)
+        """
+        if mutations is None:
+            mutations = ["PXB"]
+        
         results = {
             'success': [],
             'errors': [],
-            'total_files': len(file_pairs)
+            'total_files': len(file_pairs) * len(mutations)  # Počítáme s mutacemi
         }
         
         for i, pair in enumerate(file_pairs, start=1):  # start=1 pro 1-based pořadí
@@ -129,9 +143,8 @@ class WebPDFMerger:
                     left_page, right_page = right_page, left_page
                     logger.info(f"Pár přehozen: Liché ({right_page}) je nyní vpravo")
                 
-                # Vytvoření názvu výstupního souboru
-                output_name = f"merged_{left_page:02d}_{right_page:02d}_web.pdf"
-                output_path = OUTPUT_FOLDER / output_name
+                # Číslo páru = nižší číslo strany ze dvojice
+                pair_number = min(left_page, right_page)
                 
                 # Spojení souborů s rotací
                 left_file_path = UPLOAD_FOLDER / left_file
@@ -165,41 +178,53 @@ class WebPDFMerger:
                     results['errors'].append(error_msg)
                     continue
                 
-                # Pokus o merge s detailním logováním
-                try:
-                    success = self.merger.create_side_by_side_pdf_with_rotation(
-                        left_file_path, right_file_path, output_path, rotation
-                    )
+                # Pro každou mutaci vytvoříme kopii souboru
+                for mutation in mutations:
+                    # Jmenná konvence: 28PXE011.x.pdf
+                    # {den}{mutace}{cislo_paru:02d}{cislo_vydani}.x.pdf
+                    output_name = f"{day}{mutation}{pair_number:02d}{edition}.x.pdf"
+                    output_path = OUTPUT_FOLDER / output_name
                     
-                    if success:
-                        if output_path.exists():
-                            file_size = output_path.stat().st_size / (1024 * 1024)  # MB
-                            results['success'].append({
-                                'filename': output_name,
-                                'size_mb': round(file_size, 1),
-                                'left_file': Path(left_file).name,
-                                'right_file': Path(right_file).name,
-                                'left_page': left_page,
-                                'right_page': right_page,
-                                'rotation': rotation,
-                                'pair_index': i
-                            })
-                            logger.info(f"✅ Pár {i} úspěšně sloučen: {output_name}")
+                    logger.info(f"Vytvářím soubor: {output_name} (mutace {mutation})")
+                    
+                    # Pokus o merge s detailním logováním
+                    try:
+                        success = self.merger.create_side_by_side_pdf_with_rotation(
+                            left_file_path, right_file_path, output_path, rotation
+                        )
+                        
+                        if success:
+                            if output_path.exists():
+                                file_size = output_path.stat().st_size / (1024 * 1024)  # MB
+                                results['success'].append({
+                                    'filename': output_name,
+                                    'size_mb': round(file_size, 1),
+                                    'left_file': Path(left_file).name,
+                                    'right_file': Path(right_file).name,
+                                    'left_page': left_page,
+                                    'right_page': right_page,
+                                    'rotation': rotation,
+                                    'pair_index': i,
+                                    'mutation': mutation,
+                                    'day': day,
+                                    'edition': edition
+                                })
+                                logger.info(f"✅ Pár {i} ({mutation}) úspěšně sloučen: {output_name}")
+                            else:
+                                error_msg = f"Merge vrátil success, ale soubor neexistuje: {output_name}"
+                                logger.error(error_msg)
+                                results['errors'].append(error_msg)
                         else:
-                            error_msg = f"Merge vrátil success, ale soubor neexistuje: {output_name}"
+                            error_msg = f"Merge selhal (returned False): {left_file} + {right_file} ({mutation})"
                             logger.error(error_msg)
                             results['errors'].append(error_msg)
-                    else:
-                        error_msg = f"Merge selhal (returned False): {left_file} + {right_file}"
+                    except Exception as merge_error:
+                        error_msg = f"Exception při merge {left_file} + {right_file} ({mutation}): {str(merge_error)}"
                         logger.error(error_msg)
                         results['errors'].append(error_msg)
-                except Exception as merge_error:
-                    error_msg = f"Exception při merge {left_file} + {right_file}: {str(merge_error)}"
-                    logger.error(error_msg)
-                    results['errors'].append(error_msg)
                     
             except Exception as e:
-                error_msg = f"Chyba při zpracování páru {i} ({left_page}-{right_page}): {str(e)}"
+                error_msg = f"Chyba při zpracování páru {i}: {str(e)}"
                 results['errors'].append(error_msg)
                 logger.error(error_msg)
         
@@ -385,13 +410,15 @@ def auto_pair():
 
 @app.route('/api/merge', methods=['POST'])
 def merge_files():
-    """API endpoint pro spojení PDF souborů"""
+    """API endpoint pro spojení PDF souborů s parametry pro tiskárnu"""
     global task_counter
     
     try:
         data = request.get_json()
         file_pairs = data.get('pairs', [])
-        rotation = int(data.get('rotation', -90))
+        day = data.get('day', '01')
+        mutations = data.get('mutations', ['PXB'])
+        edition = data.get('edition', '1')
         
         if not file_pairs:
             return jsonify({
@@ -399,14 +426,19 @@ def merge_files():
                 'error': 'Žádné páry souborů nebyly vybrány'
             })
         
+        logger.info(f"Export: den={day}, mutace={mutations}, vydání={edition}, párů={len(file_pairs)}")
+        
         # Vytvoření úlohy
         task_counter += 1
         task_id = f"task_{task_counter}"
         
+        # Počet výstupních souborů = páry × mutace
+        total_files = len(file_pairs) * len(mutations)
+        
         processing_tasks[task_id] = {
             'status': 'processing',
             'progress': 0,
-            'total': len(file_pairs),
+            'total': total_files,
             'completed': 0,
             'results': None,
             'start_time': time.time()
@@ -415,7 +447,7 @@ def merge_files():
         # Spuštění zpracování v samostatném vlákně
         def process_task():
             try:
-                results = web_merger.merge_files(file_pairs, rotation)
+                results = web_merger.merge_files(file_pairs, day, mutations, edition)
                 processing_tasks[task_id]['status'] = 'completed'
                 processing_tasks[task_id]['results'] = results
                 processing_tasks[task_id]['progress'] = 100
@@ -429,7 +461,7 @@ def merge_files():
         return jsonify({
             'success': True,
             'task_id': task_id,
-            'message': 'Zpracování bylo spuštěno'
+            'message': 'Export byl spuštěn'
         })
         
     except Exception as e:
@@ -522,6 +554,76 @@ def clear_files():
             'message': 'Všechny soubory byly smazány'
         })
     except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
+@app.route('/api/download-all', methods=['POST'])
+def download_all_files():
+    """API endpoint pro stažení všech výstupních souborů jako ZIP"""
+    try:
+        data = request.get_json()
+        filenames = data.get('filenames', [])
+        
+        if not filenames:
+            return jsonify({
+                'success': False,
+                'error': 'Žádné soubory ke stažení'
+            })
+        
+        # Vytvoření ZIP archivu v paměti
+        memory_file = io.BytesIO()
+        
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for filename in filenames:
+                file_path = OUTPUT_FOLDER / secure_filename(filename)
+                if file_path.exists():
+                    zf.write(file_path, filename)
+                    logger.info(f"Přidán do ZIP: {filename}")
+        
+        memory_file.seek(0)
+        
+        # Generování názvu ZIP souboru
+        today = datetime.now().strftime('%Y-%m-%d')
+        zip_filename = f"pary_{today}.zip"
+        
+        return send_file(
+            memory_file,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=zip_filename
+        )
+        
+    except Exception as e:
+        logger.error(f"Chyba při vytváření ZIP: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
+@app.route('/api/clear-results', methods=['POST'])
+def clear_results():
+    """API endpoint pro smazání výstupních souborů (výsledků exportu)"""
+    try:
+        deleted_count = 0
+        for file_path in OUTPUT_FOLDER.glob("*.pdf"):
+            file_path.unlink()
+            deleted_count += 1
+            logger.info(f"Smazán: {file_path.name}")
+        
+        # Smazání i ZIP souborů
+        for file_path in OUTPUT_FOLDER.glob("*.zip"):
+            file_path.unlink()
+            deleted_count += 1
+        
+        return jsonify({
+            'success': True,
+            'message': f'Smazáno {deleted_count} souborů',
+            'deleted_count': deleted_count
+        })
+    except Exception as e:
+        logger.error(f"Chyba při mazání výsledků: {e}")
         return jsonify({
             'success': False,
             'error': str(e)

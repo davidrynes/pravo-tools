@@ -241,6 +241,14 @@
             background-color: #dcfce7;
             border-color: #059669;
         }
+        
+        /* Collapse šipka rotace */
+        [data-bs-toggle="collapse"][aria-expanded="true"] .collapse-icon {
+            transform: rotate(90deg);
+        }
+        [data-bs-toggle="collapse"]:hover {
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
@@ -276,11 +284,20 @@
                         </div>
                     </div>
 
-                    <!-- Sekce 2: Seznam nahraných souborů -->
+                    <!-- Sekce 2: Seznam nahraných souborů (collapsible) -->
                     <div class="card mb-4">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">
-                                <i class="fas fa-list"></i> 2. Nahrané soubory
+                                <a class="text-decoration-none text-dark d-flex align-items-center" 
+                                   data-bs-toggle="collapse" 
+                                   href="#filesListCollapse" 
+                                   role="button" 
+                                   aria-expanded="false" 
+                                   aria-controls="filesListCollapse">
+                                    <i class="fas fa-chevron-right me-2 collapse-icon" style="transition: transform 0.2s; font-size: 0.8rem;"></i>
+                                    <i class="fas fa-list me-2"></i> 2. Nahrané soubory
+                                    <span class="badge bg-primary ms-2" id="filesCountBadge">0</span>
+                                </a>
                             </h5>
                             <div>
                                 <button class="btn btn-outline-primary btn-sm" onclick="refreshFiles()">
@@ -291,22 +308,24 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="card-body">
-                            <div id="filesList">
-                                <div class="text-center text-muted">
-                                    <i class="fas fa-file-pdf fa-2x mb-2"></i>
-                                    <p>Žádné soubory nebyly nahrány</p>
+                        <div class="collapse" id="filesListCollapse">
+                            <div class="card-body">
+                                <div id="filesList">
+                                    <div class="text-center text-muted">
+                                        <i class="fas fa-file-pdf fa-2x mb-2"></i>
+                                        <p>Žádné soubory nebyly nahrány</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Sekce 3: Ruční párování s drag & drop -->
+                    <!-- Sekce 3: Příprava párů -->
                     <div class="card mb-4">
                         <div class="card-header">
                             <div class="d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0">
-                                    <i class="fas fa-link"></i> 3. Ruční párování souborů
+                                    <i class="fas fa-link"></i> 3. Příprava párů
                                 </h5>
                                 <div class="d-flex align-items-center gap-2">
                                     <select class="form-select form-select-sm" id="pageCountSelect" style="width: auto;">
@@ -317,7 +336,7 @@
                                         <option value="56">56 stran</option>
                                     </select>
                                     <button class="btn btn-success" onclick="autoPair()" id="autoPairBtn">
-                                        <i class="fas fa-magic"></i> Auto-párování
+                                        <i class="fas fa-magic"></i> Párovat
                                     </button>
                                     <button class="btn btn-outline-primary" onclick="clearPairs()" id="clearPairsBtn">
                                         <i class="fas fa-trash"></i> Vymazat
@@ -326,7 +345,10 @@
                             </div>
                             <div class="alert alert-info alert-sm mt-2 mb-0" style="font-size: 0.85rem;">
                                 <i class="fas fa-info-circle"></i>
-                                <strong>Rozsah vydání:</strong> Vyberte počet stran vydání pro správné auto-párování podle klíče (např. 40 = 20 párů: 40-1, 2-39, 38-3...)
+                                <ol class="mb-0 ps-3">
+                                    <li><strong>Rozsah vydání:</strong> Vyberte počet stran vydání pro správné párování.</li>
+                                    <li><strong>Párování:</strong> Klikněte na tlačítko Párovat pro spárování nahraných souborů.</li>
+                                </ol>
                             </div>
                         </div>
                         <div class="card-body">
@@ -345,61 +367,75 @@
                                 </div>
                                 <div class="col-md-6">
                                     <h6 class="text-center mb-3">
-                                        <i class="fas fa-link text-success"></i> Vytvořené páry
+                                        <i class="fas fa-link text-success"></i> Připravené páry
                                     </h6>
                                     <div id="pairsList" class="drag-drop-pairs">
                                         <div class="text-center text-muted p-3">
                                             <i class="fas fa-link fa-2x mb-2"></i>
-                                            <p>Přetáhněte soubory sem pro vytvoření párů</p>
+                                            <p>Zde se objeví páry</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            
-                            <!-- Návod -->
-                            <div class="alert alert-info mt-3">
-                                <i class="fas fa-info-circle"></i>
-                                <strong>Jak párovat:</strong>
-                                <ul class="mb-0 mt-2">
-                                    <li>Přetáhněte soubor z levé strany do pravé pro vytvoření páru</li>
-                                    <li>Přetáhněte soubor zpět doleva pro odebrání z páru</li>
-                                    <li>Klikněte na "Automatické párování" pro rychlé spárování</li>
-                                </ul>
-                            </div>
                         </div>
                     </div>
 
-                    <!-- Sekce 4: Nastavení a spuštění -->
+                    <!-- Sekce 4: Export párů -->
                     <div class="card mb-4">
                         <div class="card-header">
                             <h5 class="mb-0">
-                                <i class="fas fa-cogs"></i> 4. Nastavení a spuštění
+                                <i class="fas fa-file-export"></i> 4. Export párů
                             </h5>
                         </div>
                         <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-12">
-                                    <div class="alert alert-success">
-                                        <i class="fas fa-print"></i>
-                                        <strong>Oboustranný tisk dvojstran (novinový tisk):</strong>
-                                        <ul class="mb-0 mt-2">
-                                            <li><strong>Automatická rotace podle pořadí:</strong> 1. pár = -90° (přední), 2. pár = +90° (zadní), 3. pár = -90° (přední)...</li>
-                                            <li><strong>Liché strany vždy vpravo:</strong> Automatické přehození pokud je potřeba (např. 40-1, 2-39, 38-3...)</li>
-                                            <li><strong>Pevný klíč párování:</strong> Podle vybraného rozsahu (32/36/40/48/56 stran)</li>
-                                            <li><strong>Textová editovatelnost:</strong> Zachována pro vyhledávání a kopírování</li>
-                                            <li><strong>Vektorová kvalita:</strong> InDesign-like přístup pro ostrý tisk</li>
-                                            <li><strong>PDF/X-1a:2001 profil:</strong> Automaticky přidán pro profesionální tisk</li>
-                                            <li><strong>Velikost souboru:</strong> 3-4 MB na pár (optimalizováno)</li>
-                                        </ul>
-                                    </div>
+                            <div class="alert alert-info mb-3" style="font-size: 0.9rem;">
+                                <i class="fas fa-info-circle"></i>
+                                <ol class="mb-0 ps-3">
+                                    <li><strong>Den vydání:</strong> Vyberte den vydání (01 – 31)</li>
+                                    <li><strong>Mutace:</strong> Vyberte kód mutace – maximem jsou dvě naráz (např. PXB a PXE)</li>
+                                    <li><strong>Číslo vydání:</strong> Automaticky je nastaveno 1, při aktualizaci již nahraného páru na FTP tiskárny volte 2 a vyšší</li>
+                                </ol>
+                            </div>
+                            <div class="row g-3 align-items-end">
+                                <div class="col-auto">
+                                    <label for="daySelect" class="form-label"><strong>Den vydání</strong></label>
+                                    <select class="form-select" id="daySelect" style="width: 80px;">
+                                        <!-- Generováno JS -->
+                                    </select>
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">&nbsp;</label>
-                                    <div>
-                                        <button class="btn btn-primary btn-lg" onclick="startMerge()" id="mergeBtn">
-                                            <i class="fas fa-play"></i> Spustit slučování
-                                        </button>
-                                    </div>
+                                <div class="col-auto">
+                                    <label for="mutation1Select" class="form-label"><strong>Mutace 1</strong></label>
+                                    <select class="form-select" id="mutation1Select" style="width: 100px;">
+                                        <option value="PXA">PXA</option>
+                                        <option value="PXB" selected>PXB</option>
+                                        <option value="PXC">PXC</option>
+                                        <option value="PXD">PXD</option>
+                                        <option value="PXE">PXE</option>
+                                        <option value="PXF">PXF</option>
+                                    </select>
+                                </div>
+                                <div class="col-auto">
+                                    <label for="mutation2Select" class="form-label"><strong>Mutace 2</strong></label>
+                                    <select class="form-select" id="mutation2Select" style="width: 100px;">
+                                        <option value="">žádná</option>
+                                        <option value="PXA">PXA</option>
+                                        <option value="PXB">PXB</option>
+                                        <option value="PXC">PXC</option>
+                                        <option value="PXD">PXD</option>
+                                        <option value="PXE" selected>PXE</option>
+                                        <option value="PXF">PXF</option>
+                                    </select>
+                                </div>
+                                <div class="col-auto">
+                                    <label for="editionSelect" class="form-label"><strong>Číslo vydání</strong></label>
+                                    <select class="form-select" id="editionSelect" style="width: 80px;">
+                                        <!-- Generováno JS -->
+                                    </select>
+                                </div>
+                                <div class="col-auto">
+                                    <button class="btn btn-primary btn-lg" onclick="startMerge()" id="mergeBtn">
+                                        <i class="fas fa-file-export"></i> Exportuj páry
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -419,18 +455,36 @@
                         </div>
                     </div>
 
-                    <!-- Sekce 5: Výsledky -->
+                    <!-- Sekce 5: Hotové páry -->
                     <div class="card mb-4">
-                        <div class="card-header">
+                        <div class="card-header d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">
-                                <i class="fas fa-check-circle"></i> 5. Výsledky
+                                <i class="fas fa-check-circle"></i> 5. Hotové páry
                             </h5>
+                            <div id="resultsActions" style="display: none;">
+                                <button class="btn btn-success btn-sm me-2" onclick="downloadAllResults()">
+                                    <i class="fas fa-download"></i> Stáhnout všechny
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm" onclick="clearAllResults()">
+                                    <i class="fas fa-trash"></i> Smazat vše
+                                </button>
+                            </div>
                         </div>
                         <div class="card-body">
                             <div id="resultsList">
                                 <div class="text-center text-muted">
                                     <i class="fas fa-file-export fa-2x mb-2"></i>
-                                    <p>Výsledky se zobrazí po dokončení zpracování</p>
+                                    <p>Hotové páry se zobrazí po dokončení exportu</p>
+                                </div>
+                            </div>
+                            <div id="resultsFooter" class="mt-3 pt-3 border-top" style="display: none;">
+                                <div class="d-flex justify-content-end gap-2">
+                                    <button class="btn btn-success" onclick="downloadAllResults()">
+                                        <i class="fas fa-download"></i> Stáhnout všechny
+                                    </button>
+                                    <button class="btn btn-outline-danger" onclick="clearAllResults()">
+                                        <i class="fas fa-trash"></i> Smazat vše
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -451,11 +505,11 @@
                         <div class="card-body">
                             <h6 class="mt-3">Jak to funguje:</h6>
                             <ol>
-                                <li>Nahrajte PDF soubory</li>
-                                <li>Automatické párování podle čísel</li>
-                                <li>Nastavte rotaci</li>
-                                <li>Spusťte slučování</li>
-                                <li>Stáhněte výsledky</li>
+                                <li>Nahrajte PDF jednotlivých stran</li>
+                                <li>Vyberte rozsah daného vydání a spárujte strany</li>
+                                <li>Vyberte datum vydání, mutaci a aktualizaci</li>
+                                <li>Spusťte slučování PDF do párů</li>
+                                <li>Stáhněte vytvořené a vyrotované páry</li>
                             </ol>
                         </div>
                     </div>
@@ -494,7 +548,7 @@
                                     <i class="fas fa-sync-alt"></i> Obnovit seznam
                                 </button>
                                 <button class="btn btn-outline-success" onclick="autoPair()">
-                                    <i class="fas fa-magic"></i> Automatické párování
+                                    <i class="fas fa-magic"></i> Párovat
                                 </button>
                                 <button class="btn btn-outline-danger" onclick="clearAllFiles()">
                                     <i class="fas fa-trash"></i> Smazat vše
@@ -514,6 +568,7 @@
     <script>
         let currentFiles = [];
         let currentPairs = [];
+        let currentResults = [];
         let currentTaskId = null;
         let draggedElement = null;
         let draggedData = null;
@@ -523,7 +578,48 @@
             setupDragDrop();
             setupPairingDragDrop();
             refreshFiles();
+            initializeExportSelects();
+            
+            // Event listener pro collapse šipku
+            const filesCollapse = document.getElementById('filesListCollapse');
+            filesCollapse.addEventListener('show.bs.collapse', function () {
+                document.querySelector('[href="#filesListCollapse"]').setAttribute('aria-expanded', 'true');
+            });
+            filesCollapse.addEventListener('hide.bs.collapse', function () {
+                document.querySelector('[href="#filesListCollapse"]').setAttribute('aria-expanded', 'false');
+            });
         });
+
+        // Inicializace selectů pro export
+        function initializeExportSelects() {
+            // Den vydání (01-31, výchozí = zítřek)
+            const daySelect = document.getElementById('daySelect');
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const tomorrowDay = tomorrow.getDate();
+            
+            for (let i = 1; i <= 31; i++) {
+                const option = document.createElement('option');
+                option.value = i.toString().padStart(2, '0');
+                option.textContent = i.toString().padStart(2, '0');
+                if (i === tomorrowDay) {
+                    option.selected = true;
+                }
+                daySelect.appendChild(option);
+            }
+            
+            // Číslo vydání (1-20, výchozí = 1)
+            const editionSelect = document.getElementById('editionSelect');
+            for (let i = 1; i <= 20; i++) {
+                const option = document.createElement('option');
+                option.value = i.toString();
+                option.textContent = i.toString();
+                if (i === 1) {
+                    option.selected = true;
+                }
+                editionSelect.appendChild(option);
+            }
+        }
 
         // Drag & Drop funkcionalita
         function setupDragDrop() {
@@ -743,7 +839,7 @@
                 pairsList.innerHTML = `
                     <div class="text-center text-muted p-3">
                         <i class="fas fa-link fa-2x mb-2"></i>
-                        <p>Přetáhněte soubory sem pro vytvoření párů</p>
+                        <p>Zde se objeví páry</p>
                     </div>
                 `;
                 return;
@@ -872,8 +968,19 @@
 
             console.log('🚀 Spouštím merge pro páry:', currentPairs);
 
-            // Automatická rotace pro tiskárny - není potřeba uživatelské nastavení
-            const rotation = 0; // Nepoužívá se, rotace je automatická
+            // Získání parametrů exportu
+            const day = document.getElementById('daySelect').value;
+            const mutation1 = document.getElementById('mutation1Select').value;
+            const mutation2 = document.getElementById('mutation2Select').value;
+            const edition = document.getElementById('editionSelect').value;
+            
+            // Sestavení seznamu mutací
+            const mutations = [mutation1];
+            if (mutation2) {
+                mutations.push(mutation2);
+            }
+            
+            console.log('📋 Parametry exportu:', { day, mutations, edition });
             
             try {
                 const response = await fetch('/api/merge', {
@@ -883,7 +990,9 @@
                     },
                     body: JSON.stringify({
                         pairs: currentPairs,
-                        rotation: parseInt(rotation)
+                        day: day,
+                        mutations: mutations,
+                        edition: edition
                     })
                 });
                 const result = await response.json();
@@ -895,7 +1004,7 @@
                     console.log('✅ Task ID:', currentTaskId);
                     showProgress();
                     monitorTask();
-                    showStatus('Zpracování bylo spuštěno', 'info');
+                    showStatus('Export byl spuštěn', 'info');
                 } else {
                     console.error('❌ Chyba z API:', result.error);
                     showStatus(`Chyba: ${result.error}`, 'danger');
@@ -966,9 +1075,15 @@
         function displayResults(results) {
             console.log('📊 Zobrazuji výsledky:', results);
             const resultsList = document.getElementById('resultsList');
+            const resultsActions = document.getElementById('resultsActions');
+            const resultsFooter = document.getElementById('resultsFooter');
             
             if (!results || !results.success || results.success.length === 0) {
                 console.error('❌ Žádné úspěšné soubory:', results);
+                
+                // Skryjeme akce
+                resultsActions.style.display = 'none';
+                resultsFooter.style.display = 'none';
                 
                 // DETAILNÍ LOG CHYB
                 if (results && results.errors && results.errors.length > 0) {
@@ -984,7 +1099,7 @@
                 
                 if (results && results.errors && results.errors.length > 0) {
                     errorMsg += '<div class="alert alert-danger mt-3 text-start">';
-                    errorMsg += '<strong>Chyby při merge:</strong><ul class="mb-0 mt-2" style="max-height: 300px; overflow-y: auto;">';
+                    errorMsg += '<strong>Chyby při exportu:</strong><ul class="mb-0 mt-2" style="max-height: 300px; overflow-y: auto;">';
                     results.errors.forEach(err => {
                         errorMsg += `<li>${err}</li>`;
                     });
@@ -997,6 +1112,13 @@
             }
             
             console.log(`✅ Zobrazuji ${results.success.length} úspěšných souborů`);
+            
+            // Uložíme výsledky pro stažení
+            currentResults = results.success;
+            
+            // Zobrazíme akce
+            resultsActions.style.display = 'block';
+            resultsFooter.style.display = 'block';
 
             resultsList.innerHTML = results.success.map(result => `
                 <div class="result-item">
@@ -1007,23 +1129,98 @@
                             </h6>
                             <small class="text-muted">
                                 Velikost: ${result.size_mb} MB | 
-                                Z ${result.left_file} + ${result.right_file}
+                                Páry: ${result.left_page}-${result.right_page}
                             </small>
                         </div>
-                        <div>
-                            <a href="/api/download/${result.filename}?auto_delete=true" class="btn btn-success btn-sm" title="Stáhnout (automaticky se smaže po stažení)">
-                                <i class="fas fa-download"></i> Stáhnout
-                            </a>
-                        </div>
+                        <span class="badge bg-success">
+                            <i class="fas fa-check"></i> Připraveno
+                        </span>
                     </div>
                 </div>
             `).join('');
+        }
+        
+        // Stažení všech výsledků jako ZIP
+        async function downloadAllResults() {
+            if (currentResults.length === 0) {
+                showStatus('Žádné soubory ke stažení', 'warning');
+                return;
+            }
+            
+            try {
+                showStatus('Připravuji stažení všech souborů...', 'info');
+                
+                // Stáhneme všechny soubory jako ZIP
+                const filenames = currentResults.map(r => r.filename);
+                const response = await fetch('/api/download-all', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ filenames: filenames })
+                });
+                
+                if (response.ok) {
+                    // Stáhneme ZIP soubor
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `pary_${new Date().toISOString().slice(0,10)}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                    
+                    showStatus(`Staženo ${currentResults.length} souborů`, 'success');
+                } else {
+                    const result = await response.json();
+                    showStatus(`Chyba: ${result.error}`, 'danger');
+                }
+            } catch (error) {
+                showStatus(`Chyba při stahování: ${error.message}`, 'danger');
+            }
+        }
+        
+        // Smazání všech výsledků
+        async function clearAllResults() {
+            if (currentResults.length === 0) {
+                showStatus('Žádné soubory ke smazání', 'warning');
+                return;
+            }
+            
+            if (!confirm('Opravdu chcete smazat všechny vyexportované páry?')) return;
+            
+            try {
+                const response = await fetch('/api/clear-results', {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentResults = [];
+                    document.getElementById('resultsList').innerHTML = `
+                        <div class="text-center text-muted">
+                            <i class="fas fa-file-export fa-2x mb-2"></i>
+                            <p>Hotové páry se zobrazí po dokončení exportu</p>
+                        </div>
+                    `;
+                    document.getElementById('resultsActions').style.display = 'none';
+                    document.getElementById('resultsFooter').style.display = 'none';
+                    showStatus('Všechny výsledky byly smazány', 'success');
+                } else {
+                    showStatus(`Chyba: ${result.error}`, 'danger');
+                }
+            } catch (error) {
+                showStatus(`Chyba: ${error.message}`, 'danger');
+            }
         }
 
         // Aktualizace statistik
         function updateStats() {
             document.getElementById('filesCount').textContent = currentFiles.length;
             document.getElementById('pairsCount').textContent = currentPairs.length;
+            document.getElementById('filesCountBadge').textContent = currentFiles.length;
         }
 
         // Vyčištění všech souborů
