@@ -1129,12 +1129,17 @@
                             </h6>
                             <small class="text-muted">
                                 Velikost: ${result.size_mb} MB | 
-                                Páry: ${result.left_page}-${result.right_page}
+                                Strany: ${result.left_page}-${result.right_page}
                             </small>
                         </div>
-                        <span class="badge bg-success">
-                            <i class="fas fa-check"></i> Připraveno
-                        </span>
+                        <div class="d-flex align-items-center gap-2">
+                            <a href="/api/download/${result.filename}" class="btn btn-outline-success btn-sm" title="Stáhnout tento pár">
+                                <i class="fas fa-download"></i>
+                            </a>
+                            <span class="badge bg-success">
+                                <i class="fas fa-check"></i> Připraveno
+                            </span>
+                        </div>
                     </div>
                 </div>
             `).join('');
